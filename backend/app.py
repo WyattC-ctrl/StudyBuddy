@@ -3,6 +3,11 @@ from flask import Flask, jsonify, request
 from db import  User, Profile, Course, StudyArea, StudyTime, Major, db
 
 app = Flask(__name__)
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///app.db"
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+db.init_app(app)
+with app.app_context():
+    db.create_all()
 
 # Generalized success response.
 def success_response(data, code=200):
@@ -30,20 +35,20 @@ def signup():
     password = body.get("password")
 
     if not username or not password:
-        return failure_response("username and password are required"), 400
+        return failure_response("username and password are required", 400)
 
     if User.query.filter_by(email=email).first():
-        return failure_response("user already exists"), 409
+        return failure_response("user already exists", 409)
         
     if User.query.filter_by(username=username).first():
-        return failure_response("username already exists"), 409
+        return failure_response("username already exists", 409)
         
-    user = User(username, email, password)
+    user = User(username=username, email=email, password=password)
     db.session.add(user)
     db.session.commit()
     return success_response(user.serialize(), 201)
 
-@app.route("/login/", methods=["POST"])
+@app.route("/login/")
 def login():
     """
     Logs in with the provided username & password.
@@ -59,19 +64,19 @@ def login():
     password = body.get("password")
 
     if not username or not password:
-        return failure_response("username and password are required"), 400
+        return failure_response("username and password are required", 400)
 
     user = User.query.filter_by(username=username).first()
     if user is None or user.password != password:
-        return failure_response("invalid credentials"), 401
+        return failure_response("invalid credentials", 401)
 
     return success_response(user.serialize())
 
 @app.route("/users/<int:id>")
-def get_user():
-    user = User.query.get(id)
-    if not user:
-        return failure_response("user not found"), 404
+def get_user(id):
+    user = User.query.filter_by(id=id).first()
+    if user is None:
+        return failure_response("user not found", 404)
     return success_response(user.serialize())
 
 @app.route("/courses/", methods=["POST"])
@@ -86,10 +91,10 @@ def post_course():
     body = json.loads(request.data or "{}")
     code = body.get("code")
     if not code:
-        return failure_response("code is required"), 400
+        return failure_response("code is required", 400)
 
     if Course.query.filter_by(code=code).first():
-        return failure_response("course already exists"), 409
+        return failure_response("course already exists", 409)
 
     course = Course(code=code)
     db.session.add(course)
@@ -108,10 +113,10 @@ def post_major():
     body = json.loads(request.data or "{}")
     name = body.get("name")
     if not name:
-        return failure_response("name is required"), 400
+        return failure_response("name is required", 400)
 
     if Major.query.filter_by(name=name).first():
-        return failure_response("major already exists"), 409
+        return failure_response("major already exists", 409)
 
     major = Major(name=name)
     db.session.add(major)
@@ -130,10 +135,10 @@ def post_area():
     body = json.loads(request.data or "{}")
     name = body.get("name")
     if not name:
-        return failure_response("name is required"), 400
+        return failure_response("name is required", 400)
 
     if StudyArea.query.filter_by(name=name).first():
-        return failure_response("study area already exists"), 409
+        return failure_response("study area already exists", 409)
 
     area = StudyArea(name=name)
     db.session.add(area)
@@ -152,10 +157,10 @@ def post_time():
     body = json.loads(request.data or "{}")
     name = body.get("name")
     if not name:
-        return failure_response("name is required"), 400
+        return failure_response("name is required", 400)
 
     if StudyTime.query.filter_by(name=name).first():
-        return failure_response("study time already exists"), 409
+        return failure_response("study time already exists", 409)
 
     time = StudyTime(name=name)
     db.session.add(time)
@@ -179,17 +184,17 @@ def create_profile():
 
     user_id = body.get("user_id")
     if user_id is None:
-        return failure_response("user_id is required"), 400
+        return failure_response("user_id is required", 400)
 
     user = User.query.filter_by(id=user_id).first()
     if not user:
         return failure_response("user not found")
     if user.profile:
-        return failure_response("profile already exists for user"), 409
+        return failure_response("profile already exists for user", 409)
 
     study_area_id = body.get("study_area_id")
     if study_area_id is None :
-        return failure_response("study_area_id is required"), 400
+        return failure_response("study_area_id is required", 400)
     study_area = StudyArea.query.filter_by(id=study_area_id).first()
     if study_area is None:
         return failure_response("study area not found")
@@ -216,7 +221,7 @@ def create_profile():
         study_times = gather_related(StudyTime, body.get("study_time_ids"), "study_time_ids")
         majors = gather_related(Major, body.get("major_ids"), "major_ids")
     except ValueError as ve:
-        return failure_response(str(ve)), 400
+        return failure_response(str(ve), 400)
     except LookupError as le:
         return failure_response(str(le))
 

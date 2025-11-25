@@ -64,9 +64,9 @@ class Profile(db.Model):
    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, unique=True)
    study_area_id = db.Column(db.Integer, db.ForeignKey("study_areas.id"), nullable=True)
    study_area = db.relationship("StudyArea", back_populates="profiles", uselist=False)
-   study_times = db.relationship("StudyTime", secondary=profile_studytime_association, backref="profiles")
-   courses = db.relationship("Course", secondary=profile_course_association, backref="profiles")
-   majors = db.relationship("Major", secondary=profile_major_association, backref="profiles")
+   study_times = db.relationship("StudyTime", secondary=profile_studytime_association, back_populates="profiles")
+   courses = db.relationship("Course", secondary=profile_course_association, back_populates="profiles")
+   majors = db.relationship("Major", secondary=profile_major_association, back_populates="profiles")
    user = db.relationship("User", back_populates="profile", uselist=False)
    
    def __init__(self, **kwargs):
@@ -112,7 +112,7 @@ class Course(db.Model):
    __tablename__ = "courses"
    id = db.Column(db.Integer, primary_key=True)
    code = db.Column(db.String(100), nullable=False)
-   profiles = db.relationship("Profile", secondary=profile_course_association, backref="courses")
+   profiles = db.relationship("Profile", secondary=profile_course_association, back_populates="courses")
 
    def __init__(self, **kwargs):
       """
@@ -182,7 +182,7 @@ class StudyTime(db.Model):
    __tablename__ = "study_times"
    id = db.Column(db.Integer, primary_key=True)
    name = db.Column(db.String(50), nullable=False, unique=True)
-   profiles = db.relationship("Profile", secondary=profile_studytime_association, backref="available_study_times")
+   profiles = db.relationship("Profile", secondary=profile_studytime_association, back_populates="study_times")
 
    def __init__(self, **kwargs):
       """
@@ -217,7 +217,7 @@ class Major(db.Model):
    __tablename__ = "majors"
    id = db.Column(db.Integer, primary_key=True)
    name = db.Column(db.String(255), nullable=False, unique=True)
-   profiles = db.relationship("Profile", secondary=profile_major_association, backref="available_majors")
+   profiles = db.relationship("Profile", secondary=profile_major_association, back_populates="majors")
 
    def __init__(self, **kwargs):
       """
