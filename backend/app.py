@@ -79,6 +79,14 @@ def get_user(id):
         return failure_response("user not found", 404)
     return success_response(user.serialize())
 
+@app.route("/users/", methods=["GET"])
+def get_all_users():
+    """
+    Retrieves all users.
+    """
+    users = User.query.all()
+    return success_response([u.serialize() for u in users])
+
 @app.route("/courses/", methods=["POST"])
 def post_course():
     """
@@ -88,7 +96,7 @@ def post_course():
         "code": <STRING, required>
     }
     """
-    body = json.loads(request.data or "{}")
+    body = json.loads(request.data)
     code = body.get("code")
     if not code:
         return failure_response("code is required", 400)
@@ -101,6 +109,25 @@ def post_course():
     db.session.commit()
     return success_response(course.serialize(), 201)
 
+
+@app.route("/courses/<int:id>/")
+def get_course(id):
+    """
+    Retrieves a course by id.
+    """
+    course = Course.query.get(id)
+    if not course:
+        return failure_response("course not found", 404)
+    return success_response(course.serialize())
+
+@app.route("/courses/")
+def get_all_courses():
+    """
+    Retrieves all courses.
+    """
+    courses = Course.query.all()
+    return success_response([c.serialize() for c in courses])
+
 @app.route("/majors/", methods=["POST"])
 def post_major():
     """
@@ -110,7 +137,7 @@ def post_major():
         "name": <STRING, required>
     }
     """
-    body = json.loads(request.data or "{}")
+    body = json.loads(request.data)
     name = body.get("name")
     if not name:
         return failure_response("name is required", 400)
@@ -123,6 +150,25 @@ def post_major():
     db.session.commit()
     return success_response(major.serialize(), 201)
 
+
+@app.route("/majors/<int:id>/")
+def get_major(id):
+    """
+    Retrieves a major by id.
+    """
+    major = Major.query.get(id)
+    if not major:
+        return failure_response("major not found", 404)
+    return success_response(major.serialize())
+
+@app.route("/majors/")
+def get_all_majors():
+    """
+    Retrieves all majors.
+    """
+    majors = Major.query.all()
+    return success_response([m.serialize() for m in majors])
+
 @app.route("/areas/", methods=["POST"])
 def post_area():
     """
@@ -132,7 +178,7 @@ def post_area():
         "name": <STRING, required>
     }
     """
-    body = json.loads(request.data or "{}")
+    body = json.loads(request.data)
     name = body.get("name")
     if not name:
         return failure_response("name is required", 400)
@@ -145,6 +191,25 @@ def post_area():
     db.session.commit()
     return success_response(area.serialize(), 201)
 
+
+@app.route("/areas/<int:id>/")
+def get_area(id):
+    """
+    Retrieves a study area by id.
+    """
+    area = StudyArea.query.get(id)
+    if not area:
+        return failure_response("study area not found", 404)
+    return success_response(area.serialize())
+
+@app.route("/areas/")
+def get_all_areas():
+    """
+    Retrieves all study areas.
+    """
+    areas = StudyArea.query.all()
+    return success_response([a.serialize() for a in areas])
+
 @app.route("/times/", methods=["POST"])
 def post_time():
     """
@@ -154,7 +219,7 @@ def post_time():
         "name": <STRING, required>
     }
     """
-    body = json.loads(request.data or "{}")
+    body = json.loads(request.data)
     name = body.get("name")
     if not name:
         return failure_response("name is required", 400)
@@ -166,6 +231,25 @@ def post_time():
     db.session.add(time)
     db.session.commit()
     return success_response(time.serialize(), 201)
+
+
+@app.route("/times/<int:id>/")
+def get_time(id):
+    """
+    Retrieves a study time by id.
+    """
+    time = StudyTime.query.get(id)
+    if not time:
+        return failure_response("study time not found", 404)
+    return success_response(time.serialize())
+
+@app.route("/times/")
+def get_all_times():
+    """
+    Retrieves all study times.
+    """
+    times = StudyTime.query.all()
+    return success_response([t.serialize() for t in times])
 
 @app.route("/profiles/", methods=["POST"])
 def create_profile():
@@ -237,6 +321,24 @@ def create_profile():
     db.session.add(profile)
     db.session.commit()
     return success_response(profile.serialize(), 201)
+
+@app.route("/profiles/")
+def get_all_profiles():
+    """
+    Retrieves all profiles.
+    """
+    profiles = Profile.query.all()
+    return success_response([p.serialize() for p in profiles])
+
+@app.route("/profiles/<int:id>/")
+def get_profile(id):
+    """
+    Retrieves a profile by id.
+    """
+    profile = Profile.query.get(id)
+    if not profile:
+        return failure_response("profile not found", 404)
+    return success_response(profile.serialize())
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

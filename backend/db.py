@@ -48,7 +48,7 @@ class User(db.Model):
          "id": self.id,
          "username": self.username,
          "email": self.email,
-         "profile": self.profile.serialize() if self.profile else None,
+         "profile": self.profile.simple_serialize() if self.profile else None,
       }
 
 class Profile(db.Model):
@@ -87,7 +87,7 @@ class Profile(db.Model):
       return {
          "id": self.id,
          "user_id": self.user_id,
-         "study_area": self.study_area.serialize() if self.study_area else None,
+         "study_area": self.study_area.simple_serialize() if self.study_area else None,
          "study_times": [st.simple_serialize() for st in self.study_times],
          "courses": [c.simple_serialize() for c in self.courses],
          "majors": [m.simple_serialize() for m in self.majors],
