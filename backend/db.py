@@ -37,6 +37,7 @@ class User(db.Model):
       Initializes a User.
       """
       self.username = kwargs.get("username", "")
+      self.email = kwargs.get("email", "")
       self.password = kwargs.get("password", "")
       
    def serialize(self):
@@ -47,7 +48,6 @@ class User(db.Model):
          "id": self.id,
          "username": self.username,
          "email": self.email,
-         "password": self.password,
          "profile": self.profile.serialize() if self.profile else None,
       }
 
@@ -104,7 +104,7 @@ class Profile(db.Model):
       }
    
    
-class Courses(db.Model):
+class Course(db.Model):
    """
    Depicts a Course.
    A course can be linked to many profiles.

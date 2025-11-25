@@ -43,7 +43,7 @@ def signup():
     db.session.commit()
     return success_response(user.serialize(), 201)
 
-@app.route("/login/")
+@app.route("/login/", methods=["POST"])
 def login():
     """
     Logs in with the provided username & password.
@@ -202,9 +202,9 @@ def create_profile():
         records = []
         missing = []
         for item_id in ids:
-            object = model.query.get(item_id)
-            if object:
-                records.append(object)
+            obj = model.query.get(item_id)
+            if obj:
+                records.append(obj)
             else:
                 missing.append(item_id)
         if missing:
