@@ -14,6 +14,7 @@ struct SignUp: View {
     @State private var email: String = ""
     @State private var password: String = ""
     @State private var showPassword: Bool = false
+    @State private var goToEditProfile = false
     
     private let brandRed = Color(hex: 0x9E122C)
     private let fieldBorder = Color(.systemGray3)
@@ -104,9 +105,20 @@ struct SignUp: View {
                             .font(.subheadline)
                             .padding(.top, 8)
                             
+                            // Hidden NavigationLink triggered by state
+                            NavigationLink(
+                                destination: ProfileSetUp(),
+                                isActive: $goToEditProfile
+                            ) {
+                                EmptyView()
+                            }
+                            .hidden()
+                            
                             // Sign up button
                             Button {
-                                // TODO: Hook up sign-up action
+                                // Perform validation / sign-up logic here.
+                                // On success:
+                                goToEditProfile = true
                             } label: {
                                 Text("Sign up")
                                     .font(.system(size: 22, weight: .bold))

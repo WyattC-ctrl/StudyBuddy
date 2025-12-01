@@ -16,7 +16,7 @@ struct LogIn: View {
     private let fieldBorder = Color(.systemGray3)
     
     var body: some View {
-       
+        
         NavigationStack{
             ZStack(alignment: .topLeading) {
                 Color(.systemBackground).ignoresSafeArea()
@@ -47,7 +47,7 @@ struct LogIn: View {
                                 .background(
                                     RoundedRectangle(cornerRadius: 8)
                                         .stroke(fieldBorder, lineWidth: 1)
-                                    )
+                                )
                             HStack {
                                 Group {
                                     if showPassword {
@@ -71,22 +71,22 @@ struct LogIn: View {
                                 RoundedRectangle(cornerRadius: 8)
                                     .stroke(fieldBorder, lineWidth: 1)
                             )
-
-                           
-                                HStack {
-                                    Text("Forgot Password?")
+                            
+                            
+                            HStack {
+                                Text("Forgot Password?")
+                                    .foregroundStyle(brandRed)
+                                Spacer()
+                                NavigationLink(destination: ResetPw()){
+                                    Text("Reset")
+                                        .fontWeight(.semibold)
                                         .foregroundStyle(brandRed)
-                                    Spacer()
-                                    NavigationLink(destination: LogIn()){
-                                        Text("Reset")
-                                            .fontWeight(.semibold)
-                                            .foregroundStyle(brandRed)
-                                        
-                                    }
-                                    .font(.subheadline)
-                                    .padding(.top, 8)
                                     
                                 }
+                                .font(.subheadline)
+                                .padding(.top, 8)
+                                
+                            }
                             HStack{
                                 Text("Don't have an account?")
                                     .foregroundStyle(brandRed)
@@ -101,7 +101,7 @@ struct LogIn: View {
                                 
                                 
                             }
-                           
+                            
                             // Sign up button
                             Button {
                                 // TODO: Hook up sign-up action
@@ -117,25 +117,27 @@ struct LogIn: View {
                                     )
                                     .shadow(color: brandRed.opacity(0.25), radius: 6, y: 3)
                             }
-                            .padding(.top, 12)
                         }
-                        .padding(20)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(fieldBorder, lineWidth: 1)
-                                .fill(Color.clear)
-                        )
-                        .padding(.horizontal, 24)
-                        
-                        Spacer(minLength: 20)
+                        .padding(.top, 12)
                     }
-                    .frame(maxWidth: .infinity)
+                    .padding(20)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(fieldBorder, lineWidth: 1)
+                            .fill(Color.clear)
+                    )
+                    .padding(.horizontal, 24)
+                    
+                    Spacer(minLength: 20)
                 }
+                .frame(maxWidth: .infinity)
             }
-            
         }
+        
     }
 }
+
+
                             
 
 #Preview {
