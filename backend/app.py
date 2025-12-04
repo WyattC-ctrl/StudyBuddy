@@ -1,6 +1,6 @@
 import json, datetime, io
 from flask import Flask, jsonify, request, send_file
-from db import  User, Profile, Course, StudyArea, StudyTime, Major, Message, Meeting, UserMatchStatus, Match, db
+from db import  User, Profile, Course, StudyArea, StudyTime, Major, Message, Meeting, UserMatchStatus, Match, UserAvailabilityDay, db
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///app.db"
@@ -724,6 +724,88 @@ def get_match_suggestions(user_id):
     ).all()
     
     return success_response([u.serialize() for u in suggestions])
+
+
+# --- New User Availability Day Routes ---
+
+@app.route("/availability_days/", methods=["POST"])
+def add_availability_day():
+    """
+    Allows a user to add a day they are available.
+    Request body:
+    {
+        "user_id": <INT, required>,
+        "available_day": <STRING, required, e.g., "Monday">
+    }
+    If the day is already stored for the user, it will return a 409 conflict.
+    """
+    body = json.loads(request.data)
+    user_id = body.get("user_id")
+    available_day_raw = body.get("available_day")
+
+    if not user_id or not available_day_raw:
+        return failure_response("user_id and available_day are required", 400)
+
+    user = User.query.get(user_id)
+    if not user:
+        return failure_response("User not found", 404)
+        
+    # Normalize the day string before querying/storing
+    available_day_normalized = available_day_raw.strip().capitalize()
+
+    # Check for existing entry (via the unique constraint logic)
+    existing_day = UserAvailabilityDay.query.filter_by(
+        user_id=user_id, 
+        available_day=available_day_normalized
+    ).first()
+    
+    if existing_day:
+        return failure_response(f"Day '{available_day_normalized}' already listed for this user", 409)
+
+    new_day = UserAvailabilityDay(
+        user_id=user_id,
+        available_day=available_day_normalized
+    )
+    
+    db.session.add(new_day)
+    db.session.commit()
+    
+    return success_response(new_day.serialize(), 201)
+
+@app.route("/users/<int:user_id>/availability_days/", methods=["GET"])
+def get_user_availability_days(user_id):
+    """
+    Retrieves all available days listed by a specific user.
+    """
+    user = User.query.get(user_id)
+    if not user:
+        return failure_response("User not found", 404)
+
+    availability_days = UserAvailabilityDay.query.filter_by(user_id=user_id).all()
+    
+    return success_response({
+        "user_id": user_id,
+        "username": user.username,
+        "days": [day.serialize() for day in availability_days]
+    })
+
+
+@app.route("/availability_days/<int:day_id>/", methods=["DELETE"])
+def delete_availability_day(day_id):
+    """
+    Deletes a specific available day entry by its ID.
+    """
+    day_entry = UserAvailabilityDay.query.get(day_id)
+    
+    if not day_entry:
+        return failure_response("Availability day entry not found", 404)
+
+    db.session.delete(day_entry)
+    db.session.commit()
+    
+    return success_response({"message": "Availability day successfully deleted"})
+
+
 
 
 if __name__ == "__main__":

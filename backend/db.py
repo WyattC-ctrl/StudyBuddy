@@ -307,7 +307,6 @@ class Meeting(db.Model): # ADDED NEW MODEL
    user2_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
    time = db.Column(db.DateTime, nullable=False)
    location = db.Column(db.String(255), nullable=True)
-   name = db.Column(db.String(255), nullable=True)
    description = db.Column(db.String(1000), nullable=True)
    
    # Relationships to link users (using foreign_keys to distinguish user roles)
@@ -323,7 +322,6 @@ class Meeting(db.Model): # ADDED NEW MODEL
       # Expecting 'time' as a datetime object or string that can be parsed
       self.time = kwargs.get("time") 
       self.location = kwargs.get("location")
-      self.name = kwargs.get("name")
       self.description = kwargs.get("description")
 
    def serialize(self):
@@ -336,7 +334,6 @@ class Meeting(db.Model): # ADDED NEW MODEL
          "user2_id": self.user2_id,
          "time": self.time.isoformat() if self.time else None, # Use ISO format for standard time representation
          "location": self.location,
-         "name": self.name,
          "description": self.description,
       }
    
@@ -418,3 +415,49 @@ class Match(db.Model):
             "user2_id": self.user2_id,
             "matched_on": self.matched_on.strftime("%Y-%m-%d %H:%M:%S")
         }
+    
+
+class UserAvailabilityDay(db.Model):
+    """
+    Stores a specific day a user has indicated they are available.
+    """
+    __tablename__ = "user_availability_days"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    
+    # Store the day as a string (e.g., 'Monday', 'Tuesday')
+    # Use a string here for flexibility, as it's separate from the StudyDay model
+    available_day = db.Column(db.String(50), nullable=False) 
+    
+    # Optional: timestamp for when they added it
+    timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())
+
+    # Relationship to the User model (optional, but good practice)
+    user = db.relationship("User", backref="availability_days")
+
+    # Constraint: A user can only list a specific day once
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'available_day', name='_user_day_uc'),
+    )
+
+    def __init__(self, user_id, available_day):
+        """
+        Initializes a UserAvailabilityDay.
+        """
+        self.user_id = user_id
+        self.available_day = available_day.strip().capitalize() # Normalize for consistency
+
+    def serialize(self):
+        """
+        Serializes a UserAvailabilityDay.
+        """
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "available_day": self.available_day,
+            "timestamp": self.timestamp.strftime("%Y-%m-%d %H:%M:%S") if self.timestamp else None,
+            "username": self.user.username if self.user else None
+        }
+    
+
