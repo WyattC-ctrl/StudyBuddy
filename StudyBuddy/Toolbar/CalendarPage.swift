@@ -8,5 +8,12 @@
 import SwiftUI
 struct CalendarPage: View {
     var body: some View {
+        VStack {
+            Text("Welcome to the Calendar Page")
+                .bold()
+        }
     }
+}
+#Preview {
+    CalendarPage()
 }

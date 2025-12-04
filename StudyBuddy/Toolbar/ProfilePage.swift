@@ -6,8 +6,6 @@
 //
 
 import SwiftUI
-
-import SwiftUI
 struct ProfilePage: View {
     var body: some View {
     }
