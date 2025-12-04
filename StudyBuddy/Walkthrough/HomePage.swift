@@ -80,9 +80,6 @@ struct HomePage: View {
                                     .frame(width: 30, height: 30)
                                     .foregroundStyle(Color(.white))
 
-
-                            
-                         
                         }
                     }
                     .padding(.bottom, 30)
