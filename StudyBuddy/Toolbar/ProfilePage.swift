@@ -8,7 +8,6 @@
 import SwiftUI
 
 struct ProfilePage: View {
-    // Shared profile (when available). For now we also show sensible placeholders.
     @EnvironmentObject var profile: Profile
 
     // Branding
@@ -20,11 +19,21 @@ struct ProfilePage: View {
     // Dummy fallbacks (used when profile fields are empty)
     private var handle: String { "@testing_123" }
     private var displayName: String { profile.name.isEmpty ? "Testing" : profile.name }
-    private var majorText: String { profile.major.isEmpty ? "Computer Science 28’" : profile.major }
-    private var minorsText: String { "Info Sci, Game Design" }
-    private var collegeText: String { "Engineering" }
-    private var preferredTimeRanges: [String] { ["9am - 11am", "4pm - 7pm"] }
-
+    
+    // New: majors/minors display from arrays
+    private var majorsText: String {
+        let values = profile.majors.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        return values.isEmpty ? "Computer Science 28’" : values.joined(separator: ", ")
+    }
+    private var minorsText: String {
+        let values = profile.minors.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        return values.isEmpty ? "Info Sci, Game Design" : values.joined(separator: ", ")
+    }
+    private var collegeText: String {
+        let t = profile.college.trimmingCharacters(in: .whitespacesAndNewlines)
+        return t.isEmpty ? "Engineering" : t
+    }
+    
     private var courseList: [String] {
         if profile.courses.isEmpty {
             return ["CS 3110", "CS 2800", "MATH 2930", "CHIN 1109", "INFO 1998"]
@@ -32,12 +41,27 @@ struct ProfilePage: View {
         return profile.courses
     }
 
-    // For the chips inside the times card (your mock shows "day" and "noon")
+    // Time chips to show on the card (fall back if empty)
     private var timeChips: [Profile.StudyTime] {
         if profile.selectedTimes.isEmpty {
-            return [.day, .morning] // show day + morning to read like “day / noon” in look
+            return [.day, .morning]
         }
         return Array(profile.selectedTimes)
+    }
+
+    // Preferred time mapping (to match EditProfilePage)
+    private let timeMapping: [Profile.StudyTime: String] = [
+        .morning: "9am - 12pm",
+        .day: "4pm - 7pm",
+        .night: "7pm - 12am"
+    ]
+
+    // Show only selected locations
+    private var selectedLocationTiles: [FlexibleTilesRow.Tile] {
+        // Stable order
+        let ordered: [Profile.Location] = [.library, .cafe, .studyHall]
+        let chosen = ordered.filter { profile.selectedLocations.contains($0) }
+        return chosen.map { .init(title: $0.title, systemImage: $0.systemImage) }
     }
 
     var body: some View {
@@ -74,7 +98,7 @@ struct ProfilePage: View {
                                         Text("Major:")
                                             .font(.subheadline.weight(.semibold))
                                             .foregroundStyle(.primary)
-                                        Text(majorText)
+                                        Text(majorsText)
                                             .font(.subheadline)
                                             .foregroundStyle(.secondary)
                                     }
@@ -122,33 +146,34 @@ struct ProfilePage: View {
                         }
                         .padding(.horizontal, 20)
                         
-                        // Favorite locations section (updated to match screenshot)
+                        // Favorite locations section (only selected icons)
                         VStack(alignment: .leading, spacing: 16) {
                             Text("Favorite study locations!")
                                 .font(.headline)
                                 .foregroundStyle(.primary)
-                            
-                            // Tiles row (wrap if needed)
-                            FlexibleTilesRow(
-                                items: [
-                                    .init(title: "Library", systemImage: "books.vertical"),
-                                    .init(title: "Cafe", systemImage: "cup.and.saucer"),
-                                    .init(title: "Study Hall", systemImage: "building.columns")
-                                ],
-                                brandRed: brandRed
-                            )
-                            .accessibilityElement(children: .contain)
+
+                            if selectedLocationTiles.isEmpty {
+                                Text("No locations selected.")
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                FlexibleTilesRow(
+                                    items: selectedLocationTiles,
+                                    brandRed: brandRed
+                                )
+                                .accessibilityElement(children: .contain)
+                            }
                         }
                         .padding(.horizontal, 20)
                         
-                        Spacer(minLength: 80) // leave space so content isn't covered by bottom bar
+                        Spacer(minLength: 80)
                             .accessibilityHidden(true)
                     }
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                     .padding(.bottom, 24)
                 }
 
-                // Floating Edit button (bottom-right over locations area)
+                // Floating Edit button
                 VStack {
                     Spacer()
                     HStack {
@@ -169,12 +194,11 @@ struct ProfilePage: View {
                             .accessibilityLabel("Edit Profile")
                         }
                         .padding(.trailing, 24)
-                        .padding(.bottom, 100) // keep above the bottom bar
+                        .padding(.bottom, 80)
                     }
                 }
                 .allowsHitTesting(false)
                 .overlay(
-                   
                     VStack {
                         Spacer()
                         HStack {
@@ -195,7 +219,7 @@ struct ProfilePage: View {
                                 .accessibilityLabel("Edit Profile")
                             }
                             .padding(.trailing, 24)
-                            .padding(.bottom, 100)
+                            .padding(.bottom, 80)
                         }
                     }
                 )
@@ -277,10 +301,9 @@ struct ProfilePage: View {
 
     private var preferredTimesCard: some View {
         HStack(alignment: .top) {
-            // Left: icons in circles (match Sign Up)
+            // Left: icons in circles
             HStack(spacing: 24) {
                 ForEach(timeChips) { time in
-                    // Consider this "selected" if it's actually in the user's selectedTimes set.
                     let isSelected = profile.selectedTimes.contains(time)
                     ZStack {
                         Circle()
@@ -297,15 +320,18 @@ struct ProfilePage: View {
 
             Spacer(minLength: 12)
 
-            // Right: label + bold times
+            // Right: label + ranges (only for selected)
             VStack(alignment: .leading, spacing: 4) {
                 Text("Preferred time(s):")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                ForEach(preferredTimeRanges, id: \.self) { range in
-                    Text(range)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
+
+                ForEach([Profile.StudyTime.morning, .day, .night], id: \.self) { t in
+                    if profile.selectedTimes.contains(t), let label = timeMapping[t] {
+                        Text(label)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                    }
                 }
             }
         }
@@ -321,7 +347,6 @@ struct ProfilePage: View {
         let chips: [String]
         private let brandRed = Color(hex: 0x9E122C)
 
-        // Two fixed-height rows to keep a consistent two-row look
         private let rows: [GridItem] = [
             GridItem(.fixed(34), spacing: 12, alignment: .center),
             GridItem(.fixed(34), spacing: 12, alignment: .center)
@@ -338,7 +363,7 @@ struct ProfilePage: View {
                         Text(course.uppercased())
                             .font(.subheadline.weight(.bold))
                             .foregroundColor(.white)
-                            .lineLimit(1) // one line per chip
+                            .lineLimit(1)
                             .padding(.horizontal, 14)
                             .padding(.vertical, 8)
                             .background(
@@ -349,13 +374,11 @@ struct ProfilePage: View {
                 }
                 .padding(.vertical, 2)
             }
-            // Give the grid enough height to show two rows
-            .frame(height: 2 * 34 + 12) // row height * 2 + spacing between rows
+            .frame(height: 2 * 34 + 12)
         }
     }
 
     // MARK: - Favorite locations tiles
-
     struct FlexibleTilesRow: View {
         struct Tile: Identifiable, Hashable {
             let id = UUID()
@@ -363,15 +386,14 @@ struct ProfilePage: View {
             let systemImage: String
         }
 
-        let items: [Tile]
-        let brandRed: Color
-
-        // Three equal columns that wrap if needed
-        private static let columns: [GridItem] = [
+        static let columns: [GridItem] = [
             GridItem(.flexible(minimum: 80), spacing: 20),
             GridItem(.flexible(minimum: 80), spacing: 20),
             GridItem(.flexible(minimum: 80), spacing: 20)
         ]
+
+        let items: [Tile]
+        let brandRed: Color
 
         var body: some View {
             LazyVGrid(columns: Self.columns, alignment: .center, spacing: 18) {
@@ -396,12 +418,15 @@ struct ProfilePage: View {
 }
 
 #Preview {
-    // Preview with a filled dummy profile so it matches the mock immediately.
     let p = Profile()
     p.name = "Testing"
-    p.major = "Computer Science 28’"
-    p.courses = ["CS 3110", "CS 2800", "MATH 2930", "CHIN 1109", "INFO 1998", "BIO 1010", "ECON 1120", "HIST 1234"]
+    p.majors = ["Computer Science 28’", "Math"]
+    p.minors = ["Info Sci", "Game Design"]
+    p.college = "Engineering"
+    p.courses = ["CS 3110", "CS 2800", "MATH 2930", "CHIN 1109", "INFO 1998"]
     p.selectedTimes = [.day, .morning]
+    p.selectedLocations = [.library, .cafe]
     return ProfilePage()
         .environmentObject(p)
 }
+
