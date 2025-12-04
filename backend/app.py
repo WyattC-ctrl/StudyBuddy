@@ -1,5 +1,5 @@
-import json, datetime
-from flask import Flask, jsonify, request
+import json, datetime, io
+from flask import Flask, jsonify, request, send_file
 from db import  User, Profile, Course, StudyArea, StudyTime, Major, Message, Meeting, db
 
 app = Flask(__name__)
@@ -16,6 +16,8 @@ def success_response(data, code=200):
 # Generalized failure response.
 def failure_response(data, code=404):
     return json.dumps({"error": data}), code
+
+MAX_PROFILE_IMAGE_BYTES = 2 * 1024 * 1024  # 2MB cap for avatar blobs
 
 @app.route("/signup/", methods=["POST"])
 def signup():
@@ -415,6 +417,55 @@ def update_profile(id):
 
     db.session.commit()
     return success_response(profile.serialize())
+
+
+@app.route("/profiles/<int:id>/image/", methods=["POST"])
+def upload_profile_image(id):
+    """
+    Uploads a profile image as a blob for a given profile.
+    Multipart form field: "image"
+    """
+    profile = Profile.query.get(id)
+    if not profile:
+        return failure_response("profile not found", 404)
+
+    file = request.files.get("image")
+    if not file or file.filename == "":
+        return failure_response("image is required", 400)
+
+    content = file.read()
+    if not content:
+        return failure_response("image is empty", 400)
+    if len(content) > MAX_PROFILE_IMAGE_BYTES:
+        return failure_response("file too large", 400)
+
+    profile.profile_image_blob = content
+    profile.profile_image_mime = file.mimetype or "application/octet-stream"
+    db.session.commit()
+
+    return success_response(
+        {
+            "profile_id": profile.id,
+            "profile_image_blob_url": f"/profiles/{profile.id}/image/",
+            "mime": profile.profile_image_mime,
+        },
+        201,
+    )
+
+
+@app.route("/profiles/<int:id>/image/")
+def get_profile_image(id):
+    """
+    Retrieves the profile image blob.
+    """
+    profile = Profile.query.get(id)
+    if not profile or not profile.profile_image_blob:
+        return failure_response("image not found", 404)
+
+    return send_file(
+        io.BytesIO(profile.profile_image_blob),
+        mimetype=profile.profile_image_mime or "application/octet-stream",
+    )
 
 
 @app.route("/messages/", methods=["POST"])

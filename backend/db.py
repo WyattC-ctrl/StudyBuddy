@@ -1,5 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 import datetime
+import base64
 
 db = SQLAlchemy()
 
@@ -64,6 +65,8 @@ class Profile(db.Model):
    id = db.Column(db.Integer, primary_key=True)
    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, unique=True)
    study_area_id = db.Column(db.Integer, db.ForeignKey("study_areas.id"), nullable=True)
+   profile_image_blob = db.Column(db.LargeBinary, nullable=True)
+   profile_image_mime = db.Column(db.String(100), nullable=True)
    study_area = db.relationship("StudyArea", back_populates="profiles", uselist=False)
    study_times = db.relationship("StudyTime", secondary=profile_studytime_association, back_populates="profiles")
    courses = db.relationship("Course", secondary=profile_course_association, back_populates="profiles")
@@ -76,6 +79,8 @@ class Profile(db.Model):
       """
       self.user_id = kwargs.get("user_id")
       self.study_area_id = kwargs.get("study_area_id")
+      self.profile_image_blob = kwargs.get("profile_image_blob")
+      self.profile_image_mime = kwargs.get("profile_image_mime")
       self.study_area = kwargs.get("study_area")
       self.study_times = kwargs.get("study_times", [])
       self.courses = kwargs.get("courses", [])
@@ -85,9 +90,16 @@ class Profile(db.Model):
       """
       Serializes a Profile, including related objects.
       """
+      encoded_blob = None
+      if self.profile_image_blob:
+         encoded_blob = base64.b64encode(self.profile_image_blob).decode("utf-8")
       return {
          "id": self.id,
          "user_id": self.user_id,
+         "has_profile_image_blob": self.profile_image_blob is not None,
+         "profile_image_blob_url": f"/profiles/{self.id}/image/" if self.profile_image_blob else None,
+         "profile_image_blob_base64": encoded_blob,
+         "profile_image_mime": self.profile_image_mime,
          "study_area": self.study_area.simple_serialize() if self.study_area else None,
          "study_times": [st.simple_serialize() for st in self.study_times],
          "courses": [c.simple_serialize() for c in self.courses],
@@ -102,6 +114,8 @@ class Profile(db.Model):
          "id": self.id,
          "user_id": self.user_id,
          "study_area_id": self.study_area_id,
+         "has_profile_image_blob": self.profile_image_blob is not None,
+         "profile_image_mime": self.profile_image_mime,
       }
    
    
@@ -319,4 +333,3 @@ class Meeting(db.Model): # ADDED NEW MODEL
          "time": self.time.isoformat() if self.time else None, # Use ISO format for standard time representation
          "location": self.location,
       }
-
