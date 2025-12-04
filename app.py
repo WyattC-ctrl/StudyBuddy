@@ -423,7 +423,7 @@ def update_profile(id):
 def upload_profile_image(id):
     """
     Uploads a profile image as a blob for a given profile.
-    Multipart form field: "image" (Use 'image' as the key when inputting)
+    Multipart form field: "image"
     """
     profile = Profile.query.get(id)
     if not profile:
