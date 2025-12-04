@@ -42,10 +42,11 @@ struct ProfilePage: View {
 
     var body: some View {
         NavigationStack {
-            ZStack(alignment: .bottomTrailing) {
+            ZStack(alignment: .bottom) {
+                // Main scrollable content
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
-
+                        
                         // Top icon row
                         HStack {
                             Image("StuddyBuddyLogoRed")
@@ -55,7 +56,7 @@ struct ProfilePage: View {
                         }
                         .padding(.top, 8)
                         .padding(.horizontal, 20)
-
+                        
                         // Header: avatar + name block
                         HStack(alignment: .top, spacing: 16) {
                             avatar
@@ -63,11 +64,11 @@ struct ProfilePage: View {
                                 Text(handle)
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
-
+                                
                                 Text(displayName)
                                     .font(.title2.weight(.semibold))
                                     .foregroundStyle(.primary)
-
+                                
                                 VStack(alignment: .leading, spacing: 2) {
                                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                                         Text("Major:")
@@ -98,17 +99,17 @@ struct ProfilePage: View {
                             Spacer(minLength: 0)
                         }
                         .padding(.horizontal, 20)
-
+                        
                         // Preferred times card
                         preferredTimesCard
                             .padding(.horizontal, 20)
-
+                        
                         // Courses section
                         VStack(alignment: .leading, spacing: 10) {
                             Text("Courses")
                                 .font(.headline)
                                 .foregroundStyle(.primary)
-
+                            
                             VStack(alignment: .leading) {
                                 FlexibleChipsView(chips: courseList)
                                     .padding(.vertical, 12)
@@ -120,13 +121,13 @@ struct ProfilePage: View {
                             )
                         }
                         .padding(.horizontal, 20)
-
+                        
                         // Favorite locations section (updated to match screenshot)
                         VStack(alignment: .leading, spacing: 16) {
                             Text("Favorite study locations!")
                                 .font(.headline)
                                 .foregroundStyle(.primary)
-
+                            
                             // Tiles row (wrap if needed)
                             FlexibleTilesRow(
                                 items: [
@@ -139,8 +140,8 @@ struct ProfilePage: View {
                             .accessibilityElement(children: .contain)
                         }
                         .padding(.horizontal, 20)
-
-                        Spacer(minLength: 24)
+                        
+                        Spacer(minLength: 80) // leave space so content isn't covered by bottom bar
                             .accessibilityHidden(true)
                     }
                     .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -148,28 +149,113 @@ struct ProfilePage: View {
                 }
 
                 // Floating Edit button (bottom-right over locations area)
-                NavigationLink {
-                    EditProfilePage()
-                        .environmentObject(profile)
-                } label: {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(brandYellow)
-                            .shadow(color: .black.opacity(0.15), radius: 6, y: 3)
-                        Image(systemName: "square.and.pencil")
-                            .font(.system(size: 32, weight: .semibold))
-                            .foregroundStyle(.black)
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        NavigationLink {
+                            EditProfilePage()
+                                .environmentObject(profile)
+                        } label: {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .fill(brandYellow)
+                                    .shadow(color: .black.opacity(0.15), radius: 6, y: 3)
+                                Image(systemName: "square.and.pencil")
+                                    .font(.system(size: 32, weight: .semibold))
+                                    .foregroundStyle(.black)
+                            }
+                            .frame(width: 57, height: 59)
+                            .accessibilityLabel("Edit Profile")
+                        }
+                        .padding(.trailing, 24)
+                        .padding(.bottom, 100) // keep above the bottom bar
                     }
-                    .frame(width: 57, height: 59)
-                    .padding(.trailing, 24)
-                    .padding(.bottom, 32)
-                    .accessibilityLabel("Edit Profile")
                 }
+                .allowsHitTesting(false)
+                .overlay(
+                   
+                    VStack {
+                        Spacer()
+                        HStack {
+                            Spacer()
+                            NavigationLink {
+                                EditProfilePage()
+                                    .environmentObject(profile)
+                            } label: {
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .fill(brandYellow)
+                                        .shadow(color: .black.opacity(0.15), radius: 6, y: 3)
+                                    Image(systemName: "square.and.pencil")
+                                        .font(.system(size: 32, weight: .semibold))
+                                        .foregroundStyle(.black)
+                                }
+                                .frame(width: 57, height: 59)
+                                .accessibilityLabel("Edit Profile")
+                            }
+                            .padding(.trailing, 24)
+                            .padding(.bottom, 100)
+                        }
+                    }
+                )
+
+                // Bottom bar (matches HomePage)
+                VStack {
+                    Spacer()
+                    ZStack {
+                        HStack(spacing: 40) {
+                            NavigationLink(destination: StudyBuddyPage()) {
+                                Image("StudyBuddyLogo")
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 30, height: 30)
+                                    .foregroundStyle(Color(.white))
+                            }
+                            NavigationLink(destination: CalendarPage()) {
+                                Image(systemName: "calendar")
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 30, height: 30)
+                                    .foregroundStyle(Color(.white))
+                            }
+                            NavigationLink(destination: ExplorePage()) {
+                                Image(systemName: "hand.raised.fill")
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 30, height: 30)
+                                    .foregroundStyle(Color(.white))
+                            }
+                            NavigationLink(destination: MessagesPage()) {
+                                Image(systemName: "message")
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 30, height: 30)
+                                    .foregroundStyle(Color(.white))
+                            }
+                            NavigationLink(destination: ProfilePage()) {
+                                Image(systemName: "person.circle.fill")
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 30, height: 30)
+                                    .foregroundStyle(Color(.white))
+                            }
+                        }
+                        .padding(.bottom, 30)
+                    }
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color(hex: 0x9E122C))
+                            .frame(width: 400, height: 100)
+                    )
+                }
+                .ignoresSafeArea(edges: .bottom)
             }
             .navigationTitle("Profile")
             .navigationBarTitleDisplayMode(.inline)
         }
     }
+    
 
     // MARK: - Subviews
 
