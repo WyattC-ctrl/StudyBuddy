@@ -78,7 +78,6 @@ struct LogIn: View {
                                 Text("Forgot Password?")
                                     .foregroundStyle(brandRed)
                                 Spacer()
-                                
 
                                 }
                                 .font(.subheadline)
@@ -89,7 +88,7 @@ struct LogIn: View {
                                 Text("Don't have an account?")
                                     .foregroundStyle(brandRed)
                                 Spacer()
-                                
+                                    
                                 }
                                 .font(.subheadline)
                                 .padding(.top, 8)

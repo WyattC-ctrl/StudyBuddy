@@ -19,9 +19,11 @@ struct FindYourMatch: View {
                     .frame(alignment: .bottom)
                     .frame(maxHeight: .infinity, alignment: .bottom)
                     .ignoresSafeArea()
+                Image(.findYourMatch)
+                    .padding(.bottom, 320)
+                    .frame(width: 256, height: 256)
                 
                 VStack {
-                    Image(.findYourMatch)
                     Spacer()
                     Text("Find Your Match")
                         .bold()
@@ -43,6 +45,7 @@ struct FindYourMatch: View {
                             .font(.system(size: 12))
                             .foregroundColor((Color(hex: 0x9E122C)))
                     }
+                    .padding(.bottom, 20)
                     NavigationLink(destination: SetUpStudySessions()) {
                         Text("Next")
                             .font(.system(size: 20))
@@ -53,7 +56,7 @@ struct FindYourMatch: View {
                             .foregroundColor(.black)
                             .cornerRadius(8)
                     }
-                    .padding()
+                    .padding(.bottom, 86)
                 }
                 .frame(maxHeight: .infinity, alignment: .center)
                 VStack {
@@ -62,6 +65,7 @@ struct FindYourMatch: View {
                             .renderingMode(.original)
                             .frame(width: 42, height: 48)
                             .accessibilityHidden(true)
+                            .padding(.bottom, )
                         Spacer()
                     }
                     .padding(.top, 30)

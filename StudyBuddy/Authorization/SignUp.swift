@@ -148,11 +148,6 @@ struct SignUp: View {
                             .opacity((!canSubmit || session.isLoading) ? 0.7 : 1.0)
                         }
                         .padding(20)
-//                        .background(
-//                            RoundedRectangle(cornerRadius: 12)
-//                                .stroke(fieldBorder, lineWidth: 1)
-//                                .fill(Color.clear)
-//                        )
                         .padding(.horizontal, 24)
                         
                         Spacer(minLength: 20)

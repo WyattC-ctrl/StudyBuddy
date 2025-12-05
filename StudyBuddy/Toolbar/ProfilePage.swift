@@ -173,7 +173,7 @@ struct ProfilePage: View {
                     .padding(.bottom, 24)
                 }
 
-                // Floating Edit button
+                // Edit button
                 VStack {
                     Spacer()
                     HStack {
@@ -224,7 +224,7 @@ struct ProfilePage: View {
                     }
                 )
 
-                // Bottom bar (matches HomePage)
+                // Navigation Bar
                 VStack {
                     Spacer()
                     ZStack {

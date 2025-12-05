@@ -33,8 +33,6 @@ struct LoadedContentView: View {
         ZStack {
             Color(hex: 0xB40023)
                 .ignoresSafeArea()
-//            Text("Welcome to StudyBuddy!")
-//                .font(.title)
             SwipeThroughProfiles()
         }
     }
@@ -51,7 +49,7 @@ struct ContentView: View {
                 }
                 .onAppear {
                     // Simulate a network request or data fetching
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                         isLoading = false // Set to false when loading is complete
                     }
                 }

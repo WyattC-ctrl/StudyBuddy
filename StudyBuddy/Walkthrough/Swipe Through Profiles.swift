@@ -19,9 +19,11 @@ struct SwipeThroughProfiles: View {
                     .frame(alignment: .bottom)
                     .frame(maxHeight: .infinity, alignment: .bottom)
                     .ignoresSafeArea()
+                Image(.swipeImg)
+                    .padding(.bottom, 250)
+                    .frame(width: 314, height: 286)
                 
                 VStack {
-                    Image(.findYourMatch)
                     Spacer()
                     Text("Swipe Through Profiles")
                         .bold()
@@ -44,7 +46,7 @@ struct SwipeThroughProfiles: View {
                             .font(.system(size: 12))
                             .foregroundColor((Color(hex: 0x9E122C)))
                     }
-                    
+                    .padding(.bottom, 20)
                     NavigationLink(destination: FindYourMatch()) {
                         Text("Next")
                             .font(.system(size: 20))
@@ -55,7 +57,7 @@ struct SwipeThroughProfiles: View {
                             .foregroundColor(.black)
                             .cornerRadius(8)
                     }
-                    .padding()
+                    .padding(.bottom, 86)
                 }
                 .frame(maxHeight: .infinity, alignment: .center)
                 

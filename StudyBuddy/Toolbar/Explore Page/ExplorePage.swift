@@ -36,10 +36,10 @@ struct ExplorePage: View {
                         user: users[index]
                     )
                     .environmentObject(profile)
-                    .padding(.horizontal, 16)
-//                    .padding(.top, 12)
+                    .padding(.horizontal, 10)
+                    .padding(.top, 12)
                 }
-                .padding(.bottom, 140) // leave space for big buttons and bottom bar
+                .padding(.bottom, 160) // leave space for big buttons and bottom bar
 
                 // MARK: - Match popup (optional visual)
                 MatchPopup(
@@ -47,7 +47,7 @@ struct ExplorePage: View {
                     visible: $showMatchPopup
                 )
 
-                // MARK: - Big action buttons (X and Check) like the mock
+                // MARK: - Match and Reject Buttons
                 HStack {
                     Button {
                         withAnimation { offset = CGSize(width: -600, height: 0) }
@@ -83,10 +83,10 @@ struct ExplorePage: View {
                         }
                     }
                 }
-                .padding(.horizontal, 28)
-                .padding(.bottom, 60) // sits above your bottom nav bar
+                .padding(.horizontal, 24)
+                .padding(.bottom, 70) // sits above nav bar
 
-                // Hidden programmatic navigation to Messages
+                // Automatic Navigation to Messages
                 NavigationLink(destination: MessagesPage()
                     .environmentObject(messages),
                                isActive: $goToMessages) {
@@ -94,7 +94,7 @@ struct ExplorePage: View {
                 }
                 .hidden()
 
-                // Bottom bar (reuse your existing style if you want it here)
+                // Navigation Bar 
                 VStack {
                     Spacer()
                     ZStack {
@@ -145,8 +145,6 @@ struct ExplorePage: View {
                 }
                 .ignoresSafeArea(edges: .bottom)
             }
-            .navigationBarTitle("Explore")
-            .navigationBarTitleDisplayMode(.inline)
         }
     }
 
@@ -159,7 +157,7 @@ struct ExplorePage: View {
         showMatchPopup = true
 
         // Small delay for feedback, then go to Messages
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
             goToMessages = true
             loadNext()
         }
@@ -181,3 +179,7 @@ struct ExplorePage: View {
         .environmentObject(MessagesModel())
         .environmentObject(Profile())
 }
+
+// Get all profiles
+//
+

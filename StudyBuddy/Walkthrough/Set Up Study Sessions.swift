@@ -20,7 +20,9 @@ struct SetUpStudySessions: View {
                     .frame(alignment: .bottom)
                     .frame(maxHeight: .infinity, alignment: .bottom)
                     .ignoresSafeArea()
-                
+                Image(.calendarImg)
+                    .padding(.bottom, 250)
+                    .frame(width: 314, height: 286)
                 VStack {
                     Spacer()
                     Text("Set up study sessions!")
@@ -44,6 +46,7 @@ struct SetUpStudySessions: View {
                             .font(.system(size: 12))
                             .foregroundColor(Color(hex: 0xB4B4B4))
                     }
+                    .padding(.bottom, 20)
                     HStack {
                         NavigationLink(destination: SignUp()) {
                             Text("Sign Up")
@@ -67,6 +70,7 @@ struct SetUpStudySessions: View {
                         }
                         .padding()
                     }
+                    .padding(.bottom, 86)
                 }
                 .frame(maxHeight: .infinity, alignment: .center)
                 

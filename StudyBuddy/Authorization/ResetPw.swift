@@ -71,7 +71,7 @@ struct ResetPw: View {
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, 28)
                     }
-                    
+
                     // Form
                     VStack(spacing: 14) {
                         // Username or Email

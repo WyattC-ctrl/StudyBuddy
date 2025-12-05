@@ -9,9 +9,6 @@ import SwiftUI
 
 struct LoadingPreExploreView: View {
     var body: some View {
-        
-//            Color(hex: 0xFFFFFF)
-//                .ignoresSafeArea()
             HStack {
                 Image(.studyBuddyLogoRed)
                     .resizable()
@@ -23,7 +20,6 @@ struct LoadingPreExploreView: View {
                     .scaledToFit()
                     .frame(width: 160, height: 41)
                     .foregroundStyle(Color(.white))
-
         }
             .padding (386)
     }
@@ -33,7 +29,6 @@ struct LoadedPreExploreView: View {
         ZStack {
             Color(hex: 0xFFFFFF)
                 .ignoresSafeArea()
-//            ExplorePage()
             HomePage()
         }
     }
@@ -56,8 +51,6 @@ struct PreExplore: View {
                 }
             }
         }
-
-
 #Preview {
     PreExplore()
 }
