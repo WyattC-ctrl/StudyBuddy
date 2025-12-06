@@ -352,8 +352,16 @@ struct ProfileSetUp: View {
         )
         let ok = await session.createOrUpdateProfile(setup: payload)
         if ok {
-           
             await session.fetchAndPopulateProfileForCurrentUser()
+            if let pid = session.profileBackendId, let img = selectedImage {
+                let uploaded = await APIManager.shared.uploadProfileImage(profileId: pid, image: img)
+                if uploaded {
+                    await MainActor.run {
+                        session.profileImage = img
+                    }
+                }
+            }
+
             goToPreExplore = true
         } else {
             submitError = session.errorMessage ?? "Failed to save profile."

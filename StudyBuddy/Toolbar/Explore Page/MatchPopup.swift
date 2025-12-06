@@ -10,6 +10,7 @@ import SwiftUI
 struct MatchPopup: View {
     let user: MatchUser
     @Binding var visible: Bool
+    var remoteImage: UIImage? = nil
 
     private let brandRed = Color(hex: 0x9E122C)
 
@@ -53,7 +54,14 @@ struct MatchPopup: View {
 
     private var avatar: some View {
         ZStack {
-            if let img = UIImage(named: user.avatarImageName) {
+            if let remoteImage {
+                Image(uiImage: remoteImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 120, height: 120)
+                    .clipShape(Circle())
+                    .shadow(radius: 6)
+            } else if let img = UIImage(named: user.avatarImageName) {
                 Image(uiImage: img)
                     .resizable()
                     .scaledToFill()
@@ -84,5 +92,5 @@ struct MatchPopup: View {
         profile_image_mime: nil
     )
     let mu = MatchUser(dto: dto)
-    return MatchPopup(user: mu, visible: .constant(true))
+    return MatchPopup(user: mu, visible: .constant(true), remoteImage: nil)
 }

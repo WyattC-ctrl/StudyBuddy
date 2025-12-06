@@ -88,7 +88,7 @@ struct MessagesPage: View {
                                 .resizable()
                                 .scaledToFit()
                                 .frame(width: 30, height: 30)
-                                .foregroundStyle(Color(.white))
+                                .foregroundStyle(.white)
                             NavigationLink(destination: ProfilePage()) {
                                 Image(systemName: "person.circle.fill")
                                     .resizable()
@@ -109,6 +109,7 @@ struct MessagesPage: View {
             }
             .navigationTitle("Messages")
             .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(true) // Disable back button on Messages page
         }
         .task {
             let loaded = await session.fetchMatches()

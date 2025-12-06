@@ -78,11 +78,10 @@ struct HomePage: View {
                       )
             }
             .ignoresSafeArea()
+            .navigationBarBackButtonHidden(true) // Disable back button on Home page
         }
     }
 }
     #Preview {
         HomePage()
     }
-    
-    

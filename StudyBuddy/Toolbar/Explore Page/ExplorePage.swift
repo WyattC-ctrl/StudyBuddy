@@ -12,7 +12,15 @@ struct ExplorePage: View {
     @EnvironmentObject var profile: Profile
     @EnvironmentObject var session: SessionStore
 
-    @State private var matches: [MatchUser] = []
+    // Candidate model holds both the display user and its profileId for image fetches
+    private struct Candidate: Identifiable, Equatable {
+        let id: Int            // same as user.id for identity
+        let user: MatchUser    // contains user-facing fields (uses user_id)
+        let profileId: Int     // dto.id required to fetch /profiles/{id}/image/
+        let hasImage: Bool
+    }
+
+    @State private var candidates: [Candidate] = []
     @State private var index: Int = 0
     @State private var offset: CGSize = .zero
     @State private var showMatchPopup = false
@@ -20,11 +28,14 @@ struct ExplorePage: View {
     @State private var isLoading = false
     @State private var errorMessage: String?
 
+    // Cache of downloaded images keyed by profileId
+    @State private var images: [Int: UIImage] = [:]
+
     private let brandRed = Color(hex: 0x9E122C)
 
-    private var currentUser: MatchUser? {
-        guard !matches.isEmpty, index >= 0, index < matches.count else { return nil }
-        return matches[index]
+    private var currentCandidate: Candidate? {
+        guard !candidates.isEmpty, index >= 0, index < candidates.count else { return nil }
+        return candidates[index]
     }
 
     var body: some View {
@@ -32,17 +43,20 @@ struct ExplorePage: View {
             ZStack(alignment: .bottom) {
                 if isLoading {
                     ProgressView()
-                } else if let user = currentUser {
+                } else if let cand = currentCandidate {
                     SwipeCardContainer(
                         offset: $offset,
                         isMatched: $showMatchPopup,
                         onSwipeLeft: handleReject,
                         onSwipeRight: handleMatchAndNavigate
                     ) {
-                        ProfileCardView(user: user)
-                            .environmentObject(profile)
-                            .padding(.horizontal, 10)
-                            .padding(.top, 12)
+                        ProfileCardView(
+                            user: cand.user,
+                            remoteImage: images[cand.profileId]
+                        )
+                        .environmentObject(profile)
+                        .padding(.horizontal, 10)
+                        .padding(.top, 12)
                     }
                     .padding(.bottom, 160)
                 } else if let errorMessage {
@@ -55,10 +69,11 @@ struct ExplorePage: View {
                         .padding(.bottom, 60)
                 }
 
-                if let user = currentUser {
+                if let cand = currentCandidate {
                     MatchPopup(
-                        user: user,
-                        visible: $showMatchPopup
+                        user: cand.user,
+                        visible: $showMatchPopup,
+                        remoteImage: images[cand.profileId]
                     )
                 }
 
@@ -153,6 +168,7 @@ struct ExplorePage: View {
             .task {
                 await loadMatches()
             }
+            .navigationBarBackButtonHidden(true) // Disable back button on Explore page
         }
     }
 
@@ -179,30 +195,32 @@ struct ExplorePage: View {
             )
             print("[Explore] My courses (normalized): \(Array(myCourses))")
 
-            let filtered = dtos.filter { dto in
-                guard let uid = dto.user_id else { return false }
-                if let currentId = session.userId, uid == currentId { return false }
+            // Filter candidates and keep profileId + hasImage flag
+            let filtered = dtos.compactMap { dto -> Candidate? in
+                guard let uid = dto.user_id else { return nil }
+                if let currentId = session.userId, uid == currentId { return nil }
+
                 let otherCourses = Set(
                     (dto.courses ?? [])
                         .compactMap { $0.code?.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() }
                         .filter { !$0.isEmpty }
                 )
                 let intersects = !myCourses.intersection(otherCourses).isEmpty
-                if intersects {
-                    print("[Explore] Candidate user_id=\(uid) shares courses: \(Array(otherCourses))")
-                }
-                return !myCourses.isEmpty && intersects
+                guard !myCourses.isEmpty && intersects else { return nil }
+
+                let user = MatchUser(dto: dto)
+                guard let profileId = dto.id else { return nil }
+                let hasImage = dto.has_profile_image_blob == true
+                return Candidate(id: user.id, user: user, profileId: profileId, hasImage: hasImage)
             }
 
-            let mapped = filtered
-                .map { MatchUser(dto: $0) }
-                .filter { $0.id > 0 }
-            
             await MainActor.run {
-                self.matches = mapped
+                self.candidates = filtered
                 self.index = 0
             }
 
+            // Kick off image fetches for those with images
+            await fetchImagesIfNeeded(for: filtered)
 
         } catch {
             await MainActor.run {
@@ -211,13 +229,27 @@ struct ExplorePage: View {
         }
     }
 
+    private func fetchImagesIfNeeded(for list: [Candidate]) async {
+        for cand in list {
+            guard cand.hasImage else { continue }
+            // Skip if already cached
+            if images[cand.profileId] != nil { continue }
+
+            if let img = await APIManager.shared.fetchProfileImage(profileId: cand.profileId) {
+                await MainActor.run {
+                    images[cand.profileId] = img
+                }
+            }
+        }
+    }
+
     private func handleMatchAndNavigate() {
-        guard let user = currentUser else { return }
+        guard let cand = currentCandidate else { return }
         guard let me = session.userId else { return }
 
-        print("[Swipe] Attempt LIKE me=\(me) target(userId)=\(user.id)")
+        print("[Swipe] Attempt LIKE me=\(me) target(userId)=\(cand.user.id)")
 
-        APIManager.shared.recordSwipe(swiperId: me, targetId: user.id, status: "LIKE") { result in
+        APIManager.shared.recordSwipe(swiperId: me, targetId: cand.user.id, status: "LIKE") { result in
             switch result {
             case .success(let res):
                 let matched = res.match_found ?? false
@@ -230,8 +262,8 @@ struct ExplorePage: View {
                     return
                 }
                 DispatchQueue.main.async {
-                    if !self.messages.matches.contains(user) {
-                        self.messages.matches.append(user)
+                    if !self.messages.matches.contains(cand.user) {
+                        self.messages.matches.append(cand.user)
                         print("[Swipe] Added to MessagesModel.matches (count=\(self.messages.matches.count))")
                     }
                     self.showMatchPopup = true
@@ -250,9 +282,9 @@ struct ExplorePage: View {
     }
 
     private func handleReject() {
-        if let me = session.userId, let user = currentUser {
-            print("[Swipe] Attempt DISLIKE me=\(me) target(userId)=\(user.id)")
-            APIManager.shared.recordSwipe(swiperId: me, targetId: user.id, status: "DISLIKE") { result in
+        if let me = session.userId, let cand = currentCandidate {
+            print("[Swipe] Attempt DISLIKE me=\(me) target(userId)=\(cand.user.id)")
+            APIManager.shared.recordSwipe(swiperId: me, targetId: cand.user.id, status: "DISLIKE") { result in
                 if case .failure(let err) = result {
                     print("[Swipe] DISLIKE failed: \(err.localizedDescription)")
                 } else {
@@ -264,11 +296,11 @@ struct ExplorePage: View {
     }
 
     private func loadNext() {
-        if matches.isEmpty { return }
-        index = (index + 1) % matches.count
+        if candidates.isEmpty { return }
+        index = (index + 1) % candidates.count
         offset = .zero
         showMatchPopup = false
-        print("[Explore] Advanced to index \(index) / \(matches.count)")
+        print("[Explore] Advanced to index \(index) / \(candidates.count)")
     }
 }
 

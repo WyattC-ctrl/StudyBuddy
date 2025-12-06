@@ -9,20 +9,18 @@ import SwiftUI
 
 struct ProfilePage: View {
     @EnvironmentObject var profile: Profile
+    @EnvironmentObject var session: SessionStore
 
- 
     private let brandRed = Color(hex: 0x9E122C)
     private let brandYellow = Color(hex: 0xFBCB77)
     private let fieldBorder = Color(.systemGray3)
     private let placeholderCircle = Color(.systemGray4)
 
-    
     private var displayName: String {
         let trimmed = profile.name.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? "Anonymous" : trimmed
     }
 
-    
     private var majorsText: String {
         profile.majors
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -47,7 +45,6 @@ struct ProfilePage: View {
             .filter { !$0.isEmpty }
     }
 
- 
     private var timeChips: [Profile.StudyTime] {
         let ordered: [Profile.StudyTime] = [.morning, .day, .night]
         return ordered.filter { profile.selectedTimes.contains($0) }
@@ -59,7 +56,6 @@ struct ProfilePage: View {
         .night: "7pm - 12am"
     ]
 
-  
     private var selectedLocationTiles: [FlexibleTilesRow.Tile] {
         let ordered: [Profile.Location] = [.library, .cafe, .studyHall]
         let chosen = ordered.filter { profile.selectedLocations.contains($0) }
@@ -69,11 +65,10 @@ struct ProfilePage: View {
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
-             
+
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
 
-                        
                         HStack {
                             Image("StuddyBuddyLogoRed")
                                 .font(.system(size: 28, weight: .regular))
@@ -83,12 +78,10 @@ struct ProfilePage: View {
                         .padding(.top, 8)
                         .padding(.horizontal, 20)
 
-                        
                         HStack(alignment: .top, spacing: 16) {
                             avatar
 
                             VStack(alignment: .leading, spacing: 6) {
-                                
                                 Text(displayName)
                                     .font(.title2.weight(.semibold))
                                     .foregroundStyle(.primary)
@@ -132,13 +125,11 @@ struct ProfilePage: View {
                         }
                         .padding(.horizontal, 20)
 
-                        
                         if !timeChips.isEmpty {
                             preferredTimesCard
                                 .padding(.horizontal, 20)
                         }
 
-                
                         if !courseList.isEmpty {
                             VStack(alignment: .leading, spacing: 10) {
                                 Text("Courses")
@@ -158,7 +149,6 @@ struct ProfilePage: View {
                             .padding(.horizontal, 20)
                         }
 
-                        
                         VStack(alignment: .leading, spacing: 16) {
                             Text("Favorite study locations!")
                                 .font(.headline)
@@ -185,7 +175,6 @@ struct ProfilePage: View {
                     .padding(.bottom, 24)
                 }
 
-                
                 VStack {
                     Spacer()
                     HStack {
@@ -193,6 +182,7 @@ struct ProfilePage: View {
                         NavigationLink {
                             EditProfilePage()
                                 .environmentObject(profile)
+                                .environmentObject(session)
                         } label: {
                             ZStack {
                                 RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -218,6 +208,7 @@ struct ProfilePage: View {
                             NavigationLink {
                                 EditProfilePage()
                                     .environmentObject(profile)
+                                    .environmentObject(session)
                             } label: {
                                 ZStack {
                                     RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -236,7 +227,6 @@ struct ProfilePage: View {
                     }
                 )
 
-          
                 VStack {
                     Spacer()
                     ZStack {
@@ -282,6 +272,12 @@ struct ProfilePage: View {
             }
             .navigationTitle("Profile")
             .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(true) // Disable back button on Profile page
+            .onAppear {
+                Task {
+                    await session.loadProfileImage()
+                }
+            }
         }
     }
 
@@ -289,7 +285,7 @@ struct ProfilePage: View {
 
     private var avatar: some View {
         ZStack {
-            if let ui = profile.uiImage {
+            if let ui = session.profileImage ?? profile.uiImage {
                 Image(uiImage: ui)
                     .resizable()
                     .scaledToFill()
@@ -305,7 +301,7 @@ struct ProfilePage: View {
 
     private var preferredTimesCard: some View {
         HStack(alignment: .top) {
-            
+
             HStack(spacing: 24) {
                 ForEach(timeChips, id: \.self) { time in
                     let isSelected = profile.selectedTimes.contains(time)
@@ -324,7 +320,6 @@ struct ProfilePage: View {
 
             Spacer(minLength: 12)
 
-            // Right: label + ranges (only for selected)
             VStack(alignment: .leading, spacing: 4) {
                 Text("Preferred time(s):")
                     .font(.subheadline)
@@ -424,6 +419,8 @@ struct ProfilePage: View {
 #Preview {
     let p = Profile()
     p.name = ""
+    let session = SessionStore()
     return ProfilePage()
         .environmentObject(p)
+        .environmentObject(session)
 }

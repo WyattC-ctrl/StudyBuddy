@@ -27,3 +27,4 @@ struct ContentView: View {
         .environmentObject(session)
         .environmentObject(session.profile)
 }
+

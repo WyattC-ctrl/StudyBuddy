@@ -10,11 +10,14 @@ final class SessionStore: ObservableObject {
     @Published var profile: Profile = Profile()
     @Published var errorMessage: String? = nil
     @Published var isLoading: Bool = false
-    
+
+    // Expose a ready-to-use UIImage for views that want it.
+    @Published var profileImage: UIImage? = nil
+
     private let userIdKey = "SB.currentUserId"
-    
+
     init() {}
-    
+
     // MARK: - Persistence
     private func persistUserId(_ id: Int?) {
         if let id {
@@ -23,25 +26,26 @@ final class SessionStore: ObservableObject {
             UserDefaults.standard.removeObject(forKey: userIdKey)
         }
     }
-    
+
     func restoreOnLaunch() async {
         if let savedId = UserDefaults.standard.object(forKey: userIdKey) as? Int {
             self.userId = savedId
             self.isAuthenticated = true
             self.errorMessage = nil
             await fetchAndPopulateProfileForCurrentUser()
+            await loadProfileImage()
         } else {
             self.userId = nil
             self.isAuthenticated = false
         }
     }
-    
+
     // MARK: - Login
     func login(username: String, password: String) async -> Bool {
         isLoading = true
         defer { isLoading = false }
         errorMessage = nil
-        
+
         let ok: Bool = await withCheckedContinuation { continuation in
             APIManager.shared.login(username: username, password: password) { [weak self] result in
                 guard let self else { continuation.resume(returning: false); return }
@@ -62,19 +66,20 @@ final class SessionStore: ObservableObject {
                 }
             }
         }
-        
+
         if ok {
             await fetchAndPopulateProfileForCurrentUser()
+            await loadProfileImage()
         }
         return ok
     }
-    
+
     // MARK: - Sign Up
     func signUp(username: String, email: String, password: String) async -> Bool {
         isLoading = true
         defer { isLoading = false }
         errorMessage = nil
-        
+
         return await withCheckedContinuation { continuation in
             APIManager.shared.signUp(username: username, email: email, password: password) { [weak self] result in
                 guard let self else {
@@ -104,13 +109,13 @@ final class SessionStore: ObservableObject {
             }
         }
     }
-    
+
     // MARK: - Create profile (ProfileSetUp)
     func createOrUpdateProfile(setup: APIManager.CreateProfileRequest) async -> Bool {
         isLoading = true
         defer { isLoading = false }
         errorMessage = nil
-        
+
         return await withCheckedContinuation { continuation in
             APIManager.shared.createProfile(setup) { [weak self] result in
                 guard let self else { continuation.resume(returning: false); return }
@@ -133,12 +138,12 @@ final class SessionStore: ObservableObject {
             }
         }
     }
-    
+
     // MARK: - Fetch current user's profile from backend
-    
+
     func fetchAndPopulateProfileForCurrentUser() async {
         guard let uid = userId else { return }
-        
+
         // 1) Get user -> profile id
         let userDTO: APIManager.UserDTO? = await withCheckedContinuation { continuation in
             APIManager.shared.getUser(id: uid) { result in
@@ -148,14 +153,14 @@ final class SessionStore: ObservableObject {
                 }
             }
         }
-        
+
         guard let user = userDTO, let profileId = user.profile?.id else {
             // user exists but no profile yet
             return
         }
-        
+
         self.profileBackendId = profileId
-        
+
         // 2) Get full profile
         let dto: APIManager.RichProfileDTO? = await withCheckedContinuation { continuation in
             APIManager.shared.getProfile(id: profileId) { result in
@@ -165,22 +170,22 @@ final class SessionStore: ObservableObject {
                 }
             }
         }
-        
+
         guard let dto else { return }
-        
+
         let p = Profile()
-        
+
         // Courses
         p.courses = (dto.courses ?? [])
             .compactMap { $0.code?.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
-        
+
         // Majors (names only)
         p.majors = (dto.majors ?? [])
             .compactMap { $0.name?.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
         p.major = p.majors.first ?? ""
-        
+
         // Study times -> Profile.StudyTime set
         let times = Set((dto.study_times ?? []).compactMap { st in
             switch st.name?.lowercased() {
@@ -191,7 +196,7 @@ final class SessionStore: ObservableObject {
             }
         })
         p.selectedTimes = times
-        
+
         // Study area -> Location
         if let areaName = dto.study_area?.name?.trimmingCharacters(in: .whitespacesAndNewlines) {
             let loc: Profile.Location? = {
@@ -204,16 +209,28 @@ final class SessionStore: ObservableObject {
             }()
             if let loc { p.selectedLocations = [loc] }
         }
-        
-        // Photo
+
+        // Photo from DTO if base64 is present (some backends include it)
         if let b64 = dto.profile_image_blob_base64,
            let data = Data(base64Encoded: b64) {
             p.photoData = data
         }
-        
+
+        // Assign the profile built so far
         self.profile = p
+
+        // 3) If backend indicates an image exists but DTO had no base64, fetch it from /profiles/{id}/image/
+        let imageExistsFlag = dto.has_profile_image_blob == true || user.profile?.has_profile_image_blob == true
+        if p.photoData == nil, imageExistsFlag {
+            if let img = await APIManager.shared.fetchProfileImage(profileId: profileId),
+               let data = img.jpegData(compressionQuality: 0.9) {
+                // Persist into model and publish a ready UIImage
+                self.profile.photoData = data
+                self.profileImage = img
+            }
+        }
     }
-    
+
     // MARK: - Push current profile back to backend (EditProfilePage)
     func syncProfileToBackend() async -> Bool {
         guard let uid = userId else {
@@ -224,14 +241,13 @@ final class SessionStore: ObservableObject {
             self.errorMessage = "No profile found on server for user \(uid)."
             return false
         }
-        
+
         isLoading = true
         defer { isLoading = false }
         errorMessage = nil
-        
+
         let p = profile
-        
-        // Study area mapping: Cafe=1, Study Hall=2, Library=3
+
         var studyAreaId: Int?
         if p.selectedLocations.contains(.cafe) {
             studyAreaId = 1
@@ -242,10 +258,9 @@ final class SessionStore: ObservableObject {
         } else {
             studyAreaId = nil
         }
-        
-        // Courses -> core IDs 
+
         let courseIDs = await resolveCourseIDs(from: p.courses)
-        
+
         // Majors -> IDs (take the first as “primary”)
         var majorIDs: [Int] = []
         if let primaryMajor = p.majors.first {
@@ -253,17 +268,17 @@ final class SessionStore: ObservableObject {
                 majorIDs = [mid]
             }
         }
-        
+
         // Study times -> IDs
         let timeIDs = resolveStudyTimeIDs(fromProfileTimes: p.selectedTimes)
-        
+
         let payload = APIManager.UpdateProfileRequest(
             study_area_id: studyAreaId,
             course_ids: courseIDs.isEmpty ? nil : courseIDs,
             study_time_ids: timeIDs.isEmpty ? nil : timeIDs,
             major_ids: majorIDs.isEmpty ? nil : majorIDs
         )
-        
+
         return await withCheckedContinuation { continuation in
             APIManager.shared.updateProfile(id: profileId, request: payload) { [weak self] result in
                 guard let self else {
@@ -284,13 +299,22 @@ final class SessionStore: ObservableObject {
             }
         }
     }
-    
+
+    // MARK: - Profile image helper
+    func loadProfileImage() async {
+        if let data = profile.photoData, let img = UIImage(data: data) {
+            self.profileImage = img
+        } else {
+            self.profileImage = nil
+        }
+    }
+
     // MARK: - Courses helper
     func resolveCourseIDs(from codes: [String]) async -> [Int] {
         let trimmed = codes
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() }
             .filter { !$0.isEmpty }
-        
+
         var ids: [Int] = []
         for code in trimmed {
             if let id = await createOrFetchCourseID(for: code) {
@@ -299,7 +323,7 @@ final class SessionStore: ObservableObject {
         }
         return ids
     }
-    
+
     private func createOrFetchCourseID(for code: String) async -> Int? {
         await withCheckedContinuation { continuation in
             APIManager.shared.createCourse(code: code) { [weak self] result in
@@ -316,7 +340,7 @@ final class SessionStore: ObservableObject {
             }
         }
     }
-    
+
     private func fetchCourseIDByListing(code: String, continuation: CheckedContinuation<Int?, Never>) {
         APIManager.shared.getCourses { result in
             switch result {
@@ -329,7 +353,7 @@ final class SessionStore: ObservableObject {
             }
         }
     }
-    
+
     // MARK: - Majors helper
     func resolveMajorID(from name: String) async -> Int? {
         let cleaned = name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -349,7 +373,7 @@ final class SessionStore: ObservableObject {
             }
         }
     }
-    
+
     private func fetchMajorIDByListing(name: String, continuation: CheckedContinuation<Int?, Never>) {
         APIManager.shared.getMajors { result in
             switch result {
@@ -362,9 +386,9 @@ final class SessionStore: ObservableObject {
             }
         }
     }
-    
+
     // MARK: - Study times helpers
-    
+
     // used by ProfileSetUp.StudyTime
     func resolveStudyTimeIDs(from selected: Set<ProfileSetUp.StudyTime>) -> [Int] {
         var ids: [Int] = []
@@ -373,7 +397,7 @@ final class SessionStore: ObservableObject {
         if selected.contains(.night)   { ids.append(3) }
         return ids
     }
-    
+
     // used by Profile.StudyTime (EditProfilePage)
     func resolveStudyTimeIDs(fromProfileTimes selected: Set<Profile.StudyTime>) -> [Int] {
         var ids: [Int] = []
@@ -382,11 +406,11 @@ final class SessionStore: ObservableObject {
         if selected.contains(.night)   { ids.append(3) }
         return ids
     }
-    
+
     // MARK: - Fetch matches for MessagesPage (real implementation)
     func fetchMatches() async -> [MatchUser] {
         guard let uid = userId else { return [] }
-        
+
         // 1) Fetch match refs
         let matchRefs: [APIManager.UserMatchDTO]? = await withCheckedContinuation { continuation in
             APIManager.shared.getUserMatches(userId: uid) { result in
@@ -397,7 +421,7 @@ final class SessionStore: ObservableObject {
             }
         }
         guard let matchRefs, !matchRefs.isEmpty else { return [] }
-        
+
         // 2) For each matched user, fetch their profile dto
         var users: [MatchUser] = []
         for item in matchRefs {

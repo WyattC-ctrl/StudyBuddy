@@ -8,6 +8,7 @@ import SwiftUI
 
 struct ProfileCardView: View {
     let user: MatchUser
+    var remoteImage: UIImage? = nil
     @EnvironmentObject var profile: Profile
 
     private let brandRed = Color(hex: 0x9E122C)
@@ -122,7 +123,13 @@ struct ProfileCardView: View {
 
     private var avatar: some View {
         ZStack {
-            if let img = UIImage(named: user.avatarImageName) {
+            if let remoteImage {
+                Image(uiImage: remoteImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 90, height: 90)
+                    .clipShape(Circle())
+            } else if let img = UIImage(named: user.avatarImageName) {
                 Image(uiImage: img)
                     .resizable()
                     .scaledToFill()
@@ -280,6 +287,6 @@ struct ProfileCardView: View {
             profile_image_mime: nil
         )
     )
-    return ProfileCardView(user: user)
+    return ProfileCardView(user: user, remoteImage: nil)
         .environmentObject(p)
 }

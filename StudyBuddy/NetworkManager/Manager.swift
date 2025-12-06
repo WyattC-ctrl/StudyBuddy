@@ -731,6 +731,7 @@ final class APIManager {
             }
     }
     
+    
     // MARK: - Swipes
     struct SwipeRequest: Encodable {
         let swiper_id: Int
@@ -823,6 +824,65 @@ final class APIManager {
         return nil
     }
 }
+extension APIManager {
+
+    // MARK: - Upload Profile Image (Alamofire multipart, preserves cookies/auth)
+    func uploadProfileImage(profileId: Int, image: UIImage) async -> Bool {
+        let path = "profiles/\(profileId)/image/"
+        guard let url = URL(string: baseURL + path) else { return false }
+        guard let imageData = image.jpegData(compressionQuality: 0.8) else { return false }
+
+        // Use the same session (with cookies/timeouts) and proper multipart builder.
+        // Backend requires field name "image".
+        return await withCheckedContinuation { continuation in
+            session.upload(
+                multipartFormData: { form in
+                    form.append(imageData, withName: "image", fileName: "avatar.jpg", mimeType: "image/jpeg")
+                },
+                to: url,
+                method: .post
+            )
+            .validate(statusCode: 200..<600)
+            .responseData { response in
+                let status = response.response?.statusCode ?? -1
+
+                // Log server response body when not successful
+                if !(200...299).contains(status) {
+                    if let data = response.data, let raw = String(data: data, encoding: .utf8) {
+                        print("[UploadImage] HTTP \(status) body: \(raw)")
+                    } else {
+                        print("[UploadImage] HTTP \(status) no body")
+                    }
+                }
+
+                switch response.result {
+                case .success:
+                    continuation.resume(returning: (200...299).contains(status))
+                case .failure(let err):
+                    print("[UploadImage] Failed: \(err.localizedDescription)")
+                    continuation.resume(returning: false)
+                }
+            }
+        }
+    }
+
+    // MARK: - Fetch Profile Image
+    func fetchProfileImage(profileId: Int) async -> UIImage? {
+        guard let url = URL(string: "http://34.21.81.90/profiles/\(profileId)/image/") else { return nil }
+
+        do {
+            let (data, response) = try await URLSession.shared.data(from: url)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+                return nil
+            }
+            return UIImage(data: data)
+        } catch {
+            print("[FetchImage] Error:", error.localizedDescription)
+            return nil
+        }
+    }
+}
+
 
 struct JSONDataEncoding: ParameterEncoding {
     private let data: Data
@@ -835,5 +895,14 @@ struct JSONDataEncoding: ParameterEncoding {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         }
         return request
+    }
+}
+
+// MARK: - Data helper to append Strings as UTF-8
+private extension Data {
+    mutating func append(_ string: String) {
+        if let data = string.data(using: .utf8) {
+            append(data)
+        }
     }
 }
