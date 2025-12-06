@@ -343,6 +343,7 @@ struct ProfileSetUp: View {
             return
         }
         
+        // If you have a real college id, replace `nil` with it (e.g., session.collegeId).
         let payload = APIManager.CreateProfileRequest(
             user_id: uid,
             study_area_id: areaId,

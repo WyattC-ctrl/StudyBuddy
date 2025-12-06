@@ -14,8 +14,12 @@ struct MatchUser: Identifiable, Equatable {
         // Prefer the backend user_id for swipe/match APIs; fallback to profile id if missing
         self.id = dto.user_id ?? dto.id ?? 0
 
-        // No username present in RichProfileDTO; placeholder for now
-        self.name = "Unknown User"
+        // Use profile name from DTO if present; fallback to placeholder
+        self.name = dto.name?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .isEmpty == false
+            ? dto.name!.trimmingCharacters(in: .whitespacesAndNewlines)
+            : "Unknown User"
 
         // Primary major
         self.primaryMajor = (dto.majors ?? [])
