@@ -73,7 +73,7 @@ class Profile(db.Model):
    id = db.Column(db.Integer, primary_key=True)
    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, unique=True)
    study_area_id = db.Column(db.Integer, db.ForeignKey("study_areas.id"), nullable=True)
-   name = db.Column(db.String(255), nullable=False)
+   name = db.Column(db.String(255), nullable=True)
    college_id = db.Column(db.Integer, db.ForeignKey("colleges.id"), nullable=True)
    profile_image_blob = db.Column(db.LargeBinary, nullable=True)
    profile_image_mime = db.Column(db.String(100), nullable=True)
@@ -316,7 +316,6 @@ class Minor(db.Model):
          "name": self.name,
       }
 
-
 class College(db.Model):
    """
    Depicts a College.
@@ -351,124 +350,6 @@ class College(db.Model):
          "id": self.id,
          "name": self.name,
       }
-   
-
-class Message(db.Model):
-   """
-   Depicts a private message between two users.
-   """
-   __tablename__ = "messages"
-   id = db.Column(db.Integer, primary_key=True)
-   sender_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-   receiver_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-   content = db.Column(db.String(5000), nullable=False)
-   timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())
-
-   sender = db.relationship("User", foreign_keys=[sender_id], backref="sent_messages")
-   receiver = db.relationship("User", foreign_keys=[receiver_id], backref="received_messages")
-
-   def __init__(self, **kwargs):
-      """
-      Initializes a Message.
-      """
-      self.sender_id = kwargs.get("sender_id")
-      self.receiver_id = kwargs.get("receiver_id")
-      self.content = kwargs.get("content", "")
-
-   def serialize(self):
-      """
-      Serializes a Message.
-      """
-      return {
-         "id": self.id,
-         "sender_id": self.sender_id,
-         "receiver_id": self.receiver_id,
-         "content": self.content,
-         # Format the timestamp for readability
-         "timestamp": self.timestamp.strftime("%Y-%m-%d %H:%M:%S") if self.timestamp else None
-      }
-   
-
-   
-class Meeting(db.Model): # ADDED NEW MODEL
-   """
-   Depicts a scheduled meeting between two users.
-   """
-   __tablename__ = "meetings"
-   id = db.Column(db.Integer, primary_key=True)
-   user1_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-   user2_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-   time = db.Column(db.DateTime, nullable=False)
-   location = db.Column(db.String(255), nullable=True)
-   description = db.Column(db.String(1000), nullable=True)
-   
-   # Relationships to link users (using foreign_keys to distinguish user roles)
-   user1 = db.relationship("User", foreign_keys=[user1_id], backref="meetings_as_user1")
-   user2 = db.relationship("User", foreign_keys=[user2_id], backref="meetings_as_user2")
-
-   def __init__(self, **kwargs):
-      """
-      Initializes a Meeting.
-      """
-      self.user1_id = kwargs.get("user1_id")
-      self.user2_id = kwargs.get("user2_id")
-      # Expecting 'time' as a datetime object or string that can be parsed
-      self.time = kwargs.get("time") 
-      self.location = kwargs.get("location")
-      self.description = kwargs.get("description")
-
-   def serialize(self):
-      """
-      Serializes a Meeting.
-      """
-      return {
-         "id": self.id,
-         "user1_id": self.user1_id,
-         "user2_id": self.user2_id,
-         "time": self.time.isoformat() if self.time else None, # Use ISO format for standard time representation
-         "location": self.location,
-         "description": self.description,
-      }
-   
-
-class UserMatchStatus(db.Model):
-    """
-    Records a unidirectional swipe/action (LIKE or DISLIKE) from one user to another.
-    """
-    __tablename__ = 'user_match_status'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    
-    # User who initiated the swipe/action
-    swiper_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    
-    # User who was swiped on/rated
-    target_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    
-    # Status: 'LIKE' or 'DISLIKE'
-    status = db.Column(db.String(10), nullable=False) 
-    
-    # Optional: Prevent duplicate swipes
-    __table_args__ = (
-        db.UniqueConstraint('swiper_id', 'target_id', name='_swiper_target_uc'),
-    )
-
-    # Relationships to the User Table
-    swiper = db.relationship("User", foreign_keys=[swiper_id], backref="swipes_made")
-    target = db.relationship("User", foreign_keys=[target_id], backref="swipes_received")
-
-    def __init__(self, swiper_id, target_id, status):
-        self.swiper_id = swiper_id
-        self.target_id = target_id
-        self.status = status
-
-    def serialize(self):
-        return {
-            "id": self.id,
-            "swiper_id": self.swiper_id,
-            "target_id": self.target_id,
-            "status": self.status
-        }
 
 class Match(db.Model):
     """
@@ -508,48 +389,3 @@ class Match(db.Model):
             "user2_id": self.user2_id,
             "matched_on": self.matched_on.strftime("%Y-%m-%d %H:%M:%S")
         }
-    
-
-class UserAvailabilityDay(db.Model):
-    """
-    Stores a specific day a user has indicated they are available.
-    """
-    __tablename__ = "user_availability_days"
-    
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-    
-    # Store the day as a string (e.g., 'Monday', 'Tuesday')
-    # Use a string here for flexibility, as it's separate from the StudyDay model
-    available_day = db.Column(db.String(50), nullable=False) 
-    
-    # Optional: timestamp for when they added it
-    timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())
-
-    # Relationship to the User model (optional, but good practice)
-    user = db.relationship("User", backref="availability_days")
-
-    # Constraint: A user can only list a specific day once
-    __table_args__ = (
-        db.UniqueConstraint('user_id', 'available_day', name='_user_day_uc'),
-    )
-
-    def __init__(self, user_id, available_day):
-        """
-        Initializes a UserAvailabilityDay.
-        """
-        self.user_id = user_id
-        self.available_day = available_day.strip().capitalize() # Normalize for consistency
-
-    def serialize(self):
-        """
-        Serializes a UserAvailabilityDay.
-        """
-        return {
-            "id": self.id,
-            "user_id": self.user_id,
-            "available_day": self.available_day,
-            "timestamp": self.timestamp.strftime("%Y-%m-%d %H:%M:%S") if self.timestamp else None,
-            "username": self.user.username if self.user else None
-        }
-    

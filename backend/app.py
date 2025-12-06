@@ -376,21 +376,20 @@ def create_profile():
     Creates a profile for a user.
     Request body:
     {
-        "name": <STRING, required>,
+        "name": <STRING, optional>,
         "user_id": <INT, required>,
         "study_area_id": <INT, required>,
         "course_ids": <[INT], required>,
         "study_time_ids": <[INT], required>,
         "major_ids": <[INT], required>,
         "minor_ids": <[INT], optional>,
-        "college_id": <INT, required>,
+        "college_id": <INT, optional>,
     }
     """
     body = json.loads(request.data)
 
-    name = (body.get("name") or "").strip()
-    if not name:
-        return failure_response("name is required", 400)
+    name_raw = body.get("name")
+    name = name_raw.strip() if isinstance(name_raw, str) else None
     user_id = body.get("user_id")
     if user_id is None:
         return failure_response("user_id is required", 400)
@@ -409,11 +408,11 @@ def create_profile():
         return failure_response("study area not found")
 
     college_id = body.get("college_id")
-    if college_id is None:
-        return failure_response("college_id is required", 400)
-    college = College.query.get(college_id)
-    if college is None:
-        return failure_response("college not found", 404)
+    college = None
+    if college_id is not None:
+        college = College.query.get(college_id)
+        if college is None:
+            return failure_response("college not found", 404)
     
     def gather_related(model, ids, label):
         if ids is None:
@@ -538,10 +537,8 @@ def update_profile(id):
             profile.college = college
             profile.college_id = college_id
     if "name" in body:
-        new_name = (body.get("name") or "").strip()
-        if not new_name:
-            return failure_response("name is required", 400)
-        profile.name = new_name
+        new_name_raw = body.get("name")
+        profile.name = new_name_raw.strip() if isinstance(new_name_raw, str) else None
 
     try:
         courses = gather_related(Course, body.get("course_ids"), "course_ids")
@@ -613,145 +610,6 @@ def get_profile_image(id):
         io.BytesIO(profile.profile_image_blob),
         mimetype=profile.profile_image_mime or "application/octet-stream",
     )
-
-
-@app.route("/messages/", methods=["POST"])
-def send_message():
-    """
-    Sends a message from one user to another.
-    Request body:
-    {
-        "sender_id": <INT, required>,
-        "receiver_id": <INT, required>,
-        "content": <STRING, required>
-    }
-    """
-    body = json.loads(request.data)
-    sender_id = body.get("sender_id")
-    receiver_id = body.get("receiver_id")
-    content = body.get("content")
-
-    if not sender_id or not receiver_id or not content:
-        return failure_response("sender_id, receiver_id, and content are required", 400)
-
-    sender = User.query.get(sender_id)
-    receiver = User.query.get(receiver_id)
-
-    if not sender or not receiver:
-        return failure_response("Sender or receiver not found", 404)
-        
-    if sender_id == receiver_id:
-        return failure_response("Cannot send a message to yourself", 400)
-
-    message = Message(
-        sender_id=sender_id,
-        receiver_id=receiver_id,
-        content=content
-    )
-    
-    db.session.add(message)
-    db.session.commit()
-    
-    return success_response(message.serialize(), 201)
-
-@app.route("/users/<int:user_id>/messages/")
-def get_user_messages(user_id):
-    """
-    Retrieves all messages sent to and received by a specific user, sorted by timestamp.
-    """
-    user = User.query.get(user_id)
-    if not user:
-        return failure_response("User not found", 404)
-
-    # Query for messages sent *or* received by the user
-    messages = Message.query.filter(
-        (Message.sender_id == user_id) | (Message.receiver_id == user_id)
-    ).order_by(Message.timestamp.asc()).all()
-    
-    return success_response([m.serialize() for m in messages])
-
-
-def parse_time(time_str):
-    """
-    Helper function to parse a time string into a datetime object.
-    Supports a simple ISO-like format (YYYY-MM-DD HH:MM:SS).
-    """
-    try:
-        # Example format: "2025-12-25 10:30:00"
-        return datetime.datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S")
-    except ValueError:
-        return None
-
-# --- New Meeting Routes ---
-@app.route("/meetings/", methods=["POST"])
-def create_meeting():
-    """
-    Creates a meeting between two users and schedules it.
-    Request body:
-    {
-        "user1_id": <INT, required>,
-        "user2_id": <INT, required>,
-        "time": <STRING, required, format: "YYYY-MM-DD HH:MM:SS">,
-        "name": <STRING, optional>,
-        "location": <STRING, optional>,
-        "description": <STRING, optional>
-    }
-    """
-    body = json.loads(request.data)
-    user1_id = body.get("user1_id")
-    user2_id = body.get("user2_id")
-    time_str = body.get("time")
-    name = body.get("name")
-    location = body.get("location")
-    description = body.get("description")
-
-    if not user1_id or not user2_id or not time_str:
-        return failure_response("user1_id, user2_id, and time are required", 400)
-
-    user1 = User.query.get(user1_id)
-    user2 = User.query.get(user2_id)
-
-    if not user1 or not user2:
-        return failure_response("One or both users not found", 404)
-        
-    if user1_id == user2_id:
-        return failure_response("Cannot schedule a meeting with yourself", 400)
-    
-    meeting_time = parse_time(time_str)
-    if meeting_time is None:
-        return failure_response("Invalid time format. Use YYYY-MM-DD HH:MM:SS", 400)
-
-    meeting = Meeting(
-        user1_id=user1_id,
-        user2_id=user2_id,
-        time=meeting_time,
-        name=name,
-        location=location,
-        description=description,
-    )
-    
-    db.session.add(meeting)
-    db.session.commit()
-    
-    return success_response(meeting.serialize(), 201)
-
-
-@app.route("/users/<int:user_id>/meetings/")
-def get_user_meetings(user_id):
-    """
-    Retrieves all meetings scheduled for a specific user, sorted by time.
-    """
-    user = User.query.get(user_id)
-    if not user:
-        return failure_response("User not found", 404)
-
-    # Query for meetings where the user is either user1 or user2
-    meetings = Meeting.query.filter(
-        (Meeting.user1_id == user_id) | (Meeting.user2_id == user_id)
-    ).order_by(Meeting.time.asc()).all()
-    
-    return success_response([m.serialize() for m in meetings])
-
 
 @app.route("/swipes/", methods=["POST"])
 def record_swipe():
