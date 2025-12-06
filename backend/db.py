@@ -22,6 +22,12 @@ profile_major_association = db.Table(
     db.Column("major_id", db.Integer, db.ForeignKey("majors.id"), primary_key=True),
 )
 
+profile_minor_association = db.Table(
+    "profile_minors",
+    db.Column("profile_id", db.Integer, db.ForeignKey("profiles.id"), primary_key=True),
+    db.Column("minor_id", db.Integer, db.ForeignKey("minors.id"), primary_key=True),
+)
+
 class User(db.Model):
    """
    Depicts a User.
@@ -60,17 +66,23 @@ class Profile(db.Model):
    A profile links to one study area.
    A profile can have multiple study times.
    A profile can have multiple majors.
+   A profile can have multiple minors.
+   A profile can have one college.
    """
    __tablename__ = "profiles"
    id = db.Column(db.Integer, primary_key=True)
    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, unique=True)
    study_area_id = db.Column(db.Integer, db.ForeignKey("study_areas.id"), nullable=True)
+   name = db.Column(db.String(255), nullable=False)
+   college_id = db.Column(db.Integer, db.ForeignKey("colleges.id"), nullable=True)
    profile_image_blob = db.Column(db.LargeBinary, nullable=True)
    profile_image_mime = db.Column(db.String(100), nullable=True)
    study_area = db.relationship("StudyArea", back_populates="profiles", uselist=False)
    study_times = db.relationship("StudyTime", secondary=profile_studytime_association, back_populates="profiles")
    courses = db.relationship("Course", secondary=profile_course_association, back_populates="profiles")
    majors = db.relationship("Major", secondary=profile_major_association, back_populates="profiles")
+   minors = db.relationship("Minor", secondary=profile_minor_association, back_populates="profiles")
+   college = db.relationship("College", back_populates="profiles", uselist=False)
    user = db.relationship("User", back_populates="profile", uselist=False)
    
    def __init__(self, **kwargs):
@@ -79,12 +91,16 @@ class Profile(db.Model):
       """
       self.user_id = kwargs.get("user_id")
       self.study_area_id = kwargs.get("study_area_id")
+      self.name = kwargs.get("name", "")
+      self.college_id = kwargs.get("college_id")
       self.profile_image_blob = kwargs.get("profile_image_blob")
       self.profile_image_mime = kwargs.get("profile_image_mime")
       self.study_area = kwargs.get("study_area")
       self.study_times = kwargs.get("study_times", [])
       self.courses = kwargs.get("courses", [])
       self.majors = kwargs.get("majors", [])
+      self.minors = kwargs.get("minors", [])
+      self.college = kwargs.get("college")
 
    def serialize(self):
       """
@@ -96,6 +112,7 @@ class Profile(db.Model):
       return {
          "id": self.id,
          "user_id": self.user_id,
+         "name": self.name,
          "has_profile_image_blob": self.profile_image_blob is not None,
          "profile_image_blob_url": f"/profiles/{self.id}/image/" if self.profile_image_blob else None,
          "profile_image_blob_base64": encoded_blob,
@@ -104,6 +121,8 @@ class Profile(db.Model):
          "study_times": [st.simple_serialize() for st in self.study_times],
          "courses": [c.simple_serialize() for c in self.courses],
          "majors": [m.simple_serialize() for m in self.majors],
+         "minors": [m.simple_serialize() for m in self.minors],
+         "college": self.college.simple_serialize() if self.college else None,
       }
 
    def simple_serialize(self):
@@ -113,7 +132,9 @@ class Profile(db.Model):
       return {
          "id": self.id,
          "user_id": self.user_id,
+         "name": self.name,
          "study_area_id": self.study_area_id,
+         "college_id": self.college_id,
          "has_profile_image_blob": self.profile_image_blob is not None,
          "profile_image_mime": self.profile_image_mime,
       }
@@ -253,6 +274,78 @@ class Major(db.Model):
    def simple_serialize(self):
       """
       Serializes a Major without relationships.
+      """
+      return {
+         "id": self.id,
+         "name": self.name,
+      }
+
+
+class Minor(db.Model):
+   """
+   Depicts a Minor.
+   A minor can be linked to many profiles.
+   """
+   __tablename__ = "minors"
+   id = db.Column(db.Integer, primary_key=True)
+   name = db.Column(db.String(255), nullable=False, unique=True)
+   profiles = db.relationship("Profile", secondary=profile_minor_association, back_populates="minors")
+
+   def __init__(self, **kwargs):
+      """
+      Initializes a Minor.
+      """
+      self.name = kwargs.get("name", "")
+
+   def serialize(self):
+      """
+      Serializes a Minor, including related profiles.
+      """
+      return {
+         "id": self.id,
+         "name": self.name,
+         "profiles": [p.simple_serialize() for p in self.profiles],
+      }
+
+   def simple_serialize(self):
+      """
+      Serializes a Minor without relationships.
+      """
+      return {
+         "id": self.id,
+         "name": self.name,
+      }
+
+
+class College(db.Model):
+   """
+   Depicts a College.
+   A college can be linked to many profiles.
+   """
+   __tablename__ = "colleges"
+   id = db.Column(db.Integer, primary_key=True)
+   name = db.Column(db.String(255), nullable=False, unique=True)
+   profiles = db.relationship("Profile", back_populates="college")
+
+   def __init__(self, **kwargs):
+      """
+      Initializes a College.
+      """
+      self.name = kwargs.get("name", "")
+
+   def serialize(self):
+      """
+      Serializes a College, including related profiles.
+      """
+      return {
+         "id": self.id,
+         "name": self.name,
+         "profiles": [p.simple_serialize() for p in self.profiles],
+      }
+
+   def simple_serialize(self):
+      """
+      Serializes a College without relationships.
       """
       return {
          "id": self.id,
@@ -460,4 +553,3 @@ class UserAvailabilityDay(db.Model):
             "username": self.user.username if self.user else None
         }
     
-

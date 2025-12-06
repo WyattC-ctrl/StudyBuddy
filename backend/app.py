@@ -1,6 +1,6 @@
 import json, datetime, io
 from flask import Flask, jsonify, request, send_file
-from db import  User, Profile, Course, StudyArea, StudyTime, Major, Message, Meeting, UserMatchStatus, Match, UserAvailabilityDay, db
+from db import  User, Profile, Course, StudyArea, StudyTime, Major, Minor, College, Message, Meeting, UserMatchStatus, Match, UserAvailabilityDay, db
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///app.db"
@@ -90,6 +90,36 @@ def get_all_users():
     users = User.query.all()
     return success_response([u.serialize() for u in users])
 
+
+@app.route("/users/<int:id>/username/", methods=["PUT"])
+def update_username(id):
+    """
+    Updates a user's username.
+    Request body:
+    {
+        "username": <STRING, required>
+    }
+    """
+    user = User.query.get(id)
+    if not user:
+        return failure_response("user not found", 404)
+
+    body = json.loads(request.data or "{}")
+    new_username = body.get("username")
+    if new_username is None:
+        return failure_response("username is required", 400)
+    new_username = new_username.strip()
+    if not new_username:
+        return failure_response("username cannot be empty", 400)
+
+    existing = User.query.filter_by(username=new_username).first()
+    if existing and existing.id != user.id:
+        return failure_response("username already exists", 409)
+
+    user.username = new_username
+    db.session.commit()
+    return success_response(user.serialize())
+
 @app.route("/courses/", methods=["POST"])
 def post_course():
     """
@@ -171,6 +201,92 @@ def get_all_majors():
     """
     majors = Major.query.all()
     return success_response([m.serialize() for m in majors])
+
+
+@app.route("/minors/", methods=["POST"])
+def post_minor():
+    """
+    Creates a minor.
+    Request body:
+    {
+        "name": <STRING, required>
+    }
+    """
+    body = json.loads(request.data)
+    name = body.get("name")
+    if not name:
+        return failure_response("name is required", 400)
+
+    if Minor.query.filter_by(name=name).first():
+        return failure_response("minor already exists", 409)
+
+    minor = Minor(name=name)
+    db.session.add(minor)
+    db.session.commit()
+    return success_response(minor.serialize(), 201)
+
+
+@app.route("/minors/<int:id>/")
+def get_minor(id):
+    """
+    Retrieves a minor by id.
+    """
+    minor = Minor.query.get(id)
+    if not minor:
+        return failure_response("minor not found", 404)
+    return success_response(minor.serialize())
+
+
+@app.route("/minors/")
+def get_all_minors():
+    """
+    Retrieves all minors.
+    """
+    minors = Minor.query.all()
+    return success_response([m.serialize() for m in minors])
+
+
+@app.route("/colleges/", methods=["POST"])
+def post_college():
+    """
+    Creates a college.
+    Request body:
+    {
+        "name": <STRING, required>
+    }
+    """
+    body = json.loads(request.data)
+    name = body.get("name")
+    if not name:
+        return failure_response("name is required", 400)
+
+    if College.query.filter_by(name=name).first():
+        return failure_response("college already exists", 409)
+
+    college = College(name=name)
+    db.session.add(college)
+    db.session.commit()
+    return success_response(college.serialize(), 201)
+
+
+@app.route("/colleges/<int:id>/")
+def get_college(id):
+    """
+    Retrieves a college by id.
+    """
+    college = College.query.get(id)
+    if not college:
+        return failure_response("college not found", 404)
+    return success_response(college.serialize())
+
+
+@app.route("/colleges/")
+def get_all_colleges():
+    """
+    Retrieves all colleges.
+    """
+    colleges = College.query.all()
+    return success_response([c.serialize() for c in colleges])
 
 @app.route("/areas/", methods=["POST"])
 def post_area():
@@ -260,15 +376,21 @@ def create_profile():
     Creates a profile for a user.
     Request body:
     {
+        "name": <STRING, required>,
         "user_id": <INT, required>,
         "study_area_id": <INT, required>,
         "course_ids": <[INT], required>,
         "study_time_ids": <[INT], required>,
-        "major_ids": <[INT], required>
+        "major_ids": <[INT], required>,
+        "minor_ids": <[INT], optional>,
+        "college_id": <INT, required>,
     }
     """
     body = json.loads(request.data)
 
+    name = (body.get("name") or "").strip()
+    if not name:
+        return failure_response("name is required", 400)
     user_id = body.get("user_id")
     if user_id is None:
         return failure_response("user_id is required", 400)
@@ -285,6 +407,13 @@ def create_profile():
     study_area = StudyArea.query.filter_by(id=study_area_id).first()
     if study_area is None:
         return failure_response("study area not found")
+
+    college_id = body.get("college_id")
+    if college_id is None:
+        return failure_response("college_id is required", 400)
+    college = College.query.get(college_id)
+    if college is None:
+        return failure_response("college not found", 404)
     
     def gather_related(model, ids, label):
         if ids is None:
@@ -307,6 +436,7 @@ def create_profile():
         courses = gather_related(Course, body.get("course_ids"), "course_ids")
         study_times = gather_related(StudyTime, body.get("study_time_ids"), "study_time_ids")
         majors = gather_related(Major, body.get("major_ids"), "major_ids")
+        minors = gather_related(Minor, body.get("minor_ids"), "minor_ids")
     except ValueError as ve:
         return failure_response(str(ve), 400)
     except LookupError as le:
@@ -316,9 +446,13 @@ def create_profile():
         user_id=user_id,
         study_area_id=study_area_id,
         study_area=study_area,
+        name=name,
+        college_id=college_id,
+        college=college,
         courses=courses,
         study_times=study_times,
         majors=majors,
+        minors=minors,
     )
 
     db.session.add(profile)
@@ -352,7 +486,10 @@ def update_profile(id):
         "study_area_id": <INT>,
         "course_ids": <[INT]>,
         "study_time_ids": <[INT]>,
-        "major_ids": <[INT]>
+        "major_ids": <[INT]>,
+        "minor_ids": <[INT]>,
+        "college_id": <INT>,
+        "name": <STRING>
     }
     """
     profile = Profile.query.get(id)
@@ -378,22 +515,39 @@ def update_profile(id):
             raise LookupError(f"invalid {label}: {missing}")
         return records
 
-    if "study_area_id" in body:
-        study_area_id = body.get("study_area_id")
-        if study_area_id is None:
-            profile.study_area = None
-            profile.study_area_id = None
+        if "study_area_id" in body:
+            study_area_id = body.get("study_area_id")
+            if study_area_id is None:
+                profile.study_area = None
+                profile.study_area_id = None
+            else:
+                area = StudyArea.query.get(study_area_id)
+                if not area:
+                   return failure_response("study area not found", 404)
+                profile.study_area = area
+                profile.study_area_id = study_area_id
+    if "college_id" in body:
+        college_id = body.get("college_id")
+        if college_id is None:
+            profile.college = None
+            profile.college_id = None
         else:
-            area = StudyArea.query.get(study_area_id)
-            if not area:
-               return failure_response("study area not found", 404)
-            profile.study_area = area
-            profile.study_area_id = study_area_id
+            college = College.query.get(college_id)
+            if not college:
+                return failure_response("college not found", 404)
+            profile.college = college
+            profile.college_id = college_id
+    if "name" in body:
+        new_name = (body.get("name") or "").strip()
+        if not new_name:
+            return failure_response("name is required", 400)
+        profile.name = new_name
 
     try:
         courses = gather_related(Course, body.get("course_ids"), "course_ids")
         study_times = gather_related(StudyTime, body.get("study_time_ids"), "study_time_ids")
         majors = gather_related(Major, body.get("major_ids"), "major_ids")
+        minors = gather_related(Minor, body.get("minor_ids"), "minor_ids")
     except ValueError as ve:
         return failure_response(str(ve), 400)
     except LookupError as le:
@@ -405,6 +559,8 @@ def update_profile(id):
         profile.study_times = study_times
     if majors is not None:
         profile.majors = majors
+    if minors is not None:
+        profile.minors = minors
 
     db.session.commit()
     return success_response(profile.serialize())
@@ -625,7 +781,9 @@ def record_swipe():
         return failure_response("Cannot swipe on yourself", 400)
 
     # 2. Check for existing swipe (prevents duplicate status records)
-    existing_swipe = db.session.get(UserMatchStatus, (swiper_id, target_id))
+    existing_swipe = UserMatchStatus.query.filter_by(
+        swiper_id=swiper_id, target_id=target_id
+    ).first()
     if existing_swipe:
         return failure_response("Swipe already recorded for this pair", 409)
 
