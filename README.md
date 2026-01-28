@@ -1,37 +1,43 @@
 StudyBuddy
-StudyBuddy is an iOS application built with SwiftUI designed to connect students through a profile-based matching system. Whether you're looking for a tutor, a study group, or a partner for a specific project, StudyBuddy streamlines the process of finding the right academic peer.
+StudyBuddy is a mobile application built with SwiftUI designed to connect students through a profile-based matching system. The project utilizes a centralized session management system and a real-time messaging model to facilitate academic collaboration.
 
 Features
-Profile Swiping: Intuitive "Swipe Through Profiles" interface to find academic matches quickly.
+Profile Discovery: Implements an interactive interface for browsing student profiles, optimized for academic networking.
 
-Session Management: Robust authentication handling via a SessionStore to maintain user state and profile data.
+Authentication State Management: Automated handling of user authentication status through a centralized SessionStore, ensuring secure access to user-specific data.
 
-Real-time Messaging: Integrated messaging model to facilitate communication once a match is made.
+Real-time Messaging System: Integrated MessagesModel to facilitate seamless communication and coordination between matched study partners.
 
-Custom Design System: Supports Figma-to-SwiftUI workflow with a custom Hex color extension for high-fidelity UI implementation.
+Figma-to-Code Integration: Custom Color extensions enable the direct use of hex codes (e.g., 0x1E1E1E), maintaining high-fidelity design consistency from Figma to SwiftUI.
 
-Technical Stack
-Framework: SwiftUI
+Asynchronous Session Restoration: Utilizes Swift Task modifiers to automatically restore user sessions upon application launch for a frictionless user experience.
 
-State Management: @EnvironmentObject and @StateObject for global session and message handling.
+Technical Architecture
+The application architecture relies on the following SwiftUI patterns:
 
-Architecture: Clean, modular Swift code focused on reactivity and real-time updates.
+SessionStore: Manages the global state of the user, including authentication and profile persistence.
 
-Project Structure
-StudyBuddyApp.swift: The main entry point that initializes the SessionStore and MessagesModel.
+MessagesModel: Handles the data logic and state for user-to-user communications.
 
-ContentView.swift: The primary view controller that toggles between authentication states and the main discovery feed.
+EnvironmentObjects: Provides seamless access to session and messaging data across the entire view hierarchy.
 
-Color.swift: Utility extension for initializing Color objects using Hex codes (e.g., 0x1E1E1E).
+Hex Color Support: A custom initializer for the Color struct to simplify styling from design mockups.
 
-Setup Instructions
-Clone the repository:
+File Overview
+StudyBuddyApp.swift: The main entry point that configures the app's global state and environment objects.
 
-Bash
-git clone https://github.com/WyattC-ctrl/StudyBuddy.git
-Open in Xcode: Navigate to the project folder and open StudyBuddy.xcodeproj.
+ContentView.swift: The root view that routes users to the appropriate interface based on their authentication status.
 
-Build and Run: Select a simulator (e.g., iPhone 15) and press Cmd + R.
+Color.swift: A utility extension enabling the use of hex codes for precise UI styling.
 
-Contributing
-This project was developed as a tool to enhance collaborative learning. If you have ideas for new features—like calendar integration or subject-based filtering—feel free to fork the repo and submit a pull request!
+Installation
+Clone the repository: git clone https://github.com/WyattC-ctrl/StudyBuddy.git
+
+Open the project in Xcode: open StudyBuddy.xcodeproj
+
+Build and run the application on an iOS Simulator or a physical device using Cmd + R.
+
+Usage
+Upon launch, the application attempts to restore any existing session asynchronously. Users can navigate the discovery feed to find study partners. The UI is optimized for a Figma-to-Code workflow, utilizing custom hex color definitions to ensure visual consistency across all views.
+
+Would you like me to help you add a section for "Future Enhancements" to show recruiters what features you plan to build next?
