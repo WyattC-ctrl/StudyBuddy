@@ -1,43 +1,90 @@
-StudyBuddy
-StudyBuddy is a mobile application built with SwiftUI designed to connect students through a profile-based matching system. The project utilizes a centralized session management system and a real-time messaging model to facilitate academic collaboration.
+# StudyBuddy Backend API
 
-Features
-Profile Discovery: Implements an interactive interface for browsing student profiles, optimized for academic networking.
+**StudyBuddy** is a Flask-based RESTful API designed to help students connect and form productive study groups. The platform features a unique matching system, direct database image storage, and integrated scheduling tools.
 
-Authentication State Management: Automated handling of user authentication status through a centralized SessionStore, ensuring secure access to user-specific data.
+---
 
-Real-time Messaging System: Integrated MessagesModel to facilitate seamless communication and coordination between matched study partners.
+##  Features
 
-Figma-to-Code Integration: Custom Color extensions enable the direct use of hex codes (e.g., 0x1E1E1E), maintaining high-fidelity design consistency from Figma to SwiftUI.
+* **Secure Authentication**: robust User Signup and Login endpoints.
+* **Rich Profiles**: Supports detailed student data including **Majors**, **Courses**, and **Preferred Study Areas**.
+* **Binary Image Storage**: Profile pictures are stored as **BLOBs** (Binary Large Objects) directly in the database, ensuring your data is portable and contained in a single file (`app.db`).
+* **UserMatchStatus**: Tracks "Likes" and "Dislikes" to curate potential partner suggestions.
+* **Mutual Matches**: Automatically triggers a "Match" when two users show mutual interest.
 
-Asynchronous Session Restoration: Utilizes Swift Task modifiers to automatically restore user sessions upon application launch for a frictionless user experience.
 
-Technical Architecture
-The application architecture relies on the following SwiftUI patterns:
+* **Communication**: Integrated private messaging system for coordinated studying.
+* **Scheduling**: Built-in meeting coordinator with support for locations and timestamps.
 
-SessionStore: Manages the global state of the user, including authentication and profile persistence.
+---
 
-MessagesModel: Handles the data logic and state for user-to-user communications.
+## Tech Stack
 
-EnvironmentObjects: Provides seamless access to session and messaging data across the entire view hierarchy.
+* **Language**: Python 3.x
+* **Framework**: Flask
+* **ORM**: Flask-SQLAlchemy
+* **Database**: SQLite (Development)
+* **Data Handling**: Base64 encoding for seamless image transmission via JSON.
 
-Hex Color Support: A custom initializer for the Color struct to simplify styling from design mockups.
+---
 
-File Overview
-StudyBuddyApp.swift: The main entry point that configures the app's global state and environment objects.
+## Quick Start
 
-ContentView.swift: The root view that routes users to the appropriate interface based on their authentication status.
+### 1. Set Up Virtual Environment
 
-Color.swift: A utility extension enabling the use of hex codes for precise UI styling.
+```bash
+python3 -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
 
-Installation
-Clone the repository: git clone https://github.com/WyattC-ctrl/StudyBuddy.git
+```
 
-Open the project in Xcode: open StudyBuddy.xcodeproj
+### 2. Install Dependencies
 
-Build and run the application on an iOS Simulator or a physical device using Cmd + R.
+```bash
+pip install -r requirements.txt
 
-Usage
-Upon launch, the application attempts to restore any existing session asynchronously. Users can navigate the discovery feed to find study partners. The UI is optimized for a Figma-to-Code workflow, utilizing custom hex color definitions to ensure visual consistency across all views.
+```
 
-Would you like me to help you add a section for "Future Enhancements" to show recruiters what features you plan to build next?
+### 3. Run the Server
+
+```bash
+python3 app.py
+
+```
+
+*The database (`app.db`) will automatically initialize on the first launch.*
+
+---
+
+## Core Endpoints
+
+### Profiles & Media
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| `POST` | `/profiles/` | Create a student profile. |
+| `POST` | `/profiles/<id>/image/` | Upload a profile picture (Binary). |
+| `GET` | `/profiles/<id>/image/` | Retrieve and render the profile image. |
+
+### Social & Matching
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| `GET` | `/users/<id>/suggestions/` | Get profiles you haven't swiped on yet. |
+| `POST` | `/swipes/` | Record a Like/Dislike and check for mutual matches. |
+| `GET` | `/users/<id>/matches/` | View your confirmed study partners. |
+
+---
+
+## Project Structure
+
+```text
+StudyBuddy/
+└── backend/
+    ├── app.py          # Main application & Route definitions
+    ├── db.py           # SQLAlchemy Models & Schema
+    ├── requirements.txt# Dependencies
+    ├── app.db          # SQLite Database (Auto-generated)
+    └── venv/           # Virtual Environment
+
+```
